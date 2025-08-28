@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import React from "react";
+import { Lead } from "@/types";
 import { Reminder } from "@/data/mockData";
 import { toast } from "react-toastify";
 import { useRef } from "react";
@@ -64,7 +65,24 @@ export default function Tasks() {
   const [reminderDate, setReminderDate] = useState('');
   const [reminderNotes, setReminderNotes] = useState('');
   const [reminderError, setReminderError] = useState('');
-  const leads = [];
+  // --- Leads (from localStorage) ---
+  function getLeadsFromStorage(): Lead[] {
+    const data = localStorage.getItem('leads');
+    if (data) {
+      try { return JSON.parse(data); } catch { return []; }
+    }
+    return [];
+  }
+  const [leads, setLeads] = useState<Lead[]>(getLeadsFromStorage());
+  React.useEffect(() => {
+    setLeads(getLeadsFromStorage());
+    function handleStorage() {
+      setLeads(getLeadsFromStorage());
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const leadOptions = leads.map(l => ({ value: l.id, label: `${l.fullName} (${l.phone})`, phone: l.phone }));
   const filteredLeadOptions = phoneInput
     ? leadOptions.filter(o => o.phone.replace(/\D/g, '').includes(phoneInput.replace(/\D/g, '')))

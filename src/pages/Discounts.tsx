@@ -1,10 +1,10 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Plus, Percent, Gift, Calendar, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { mockDiscounts } from "@/data/mockData";
-import { Discount } from "@/types";
+import { Discount, Lead } from "@/types";
 import { useRef } from 'react';
 
 export default function Discounts() {
@@ -13,9 +13,25 @@ export default function Discounts() {
 
   // Lead search and discount selection state
   const [leadSearch, setLeadSearch] = useState('');
-  const [selectedLead, setSelectedLead] = useState(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [discountType, setDiscountType] = useState('');
-  const leads = [];
+  // Load leads from localStorage so search works
+  function getLeadsFromStorage(): Lead[] {
+    const data = localStorage.getItem('leads');
+    if (data) {
+      try { return JSON.parse(data); } catch { return []; }
+    }
+    return [];
+  }
+  const [leads, setLeads] = useState<Lead[]>(getLeadsFromStorage());
+  React.useEffect(() => {
+    setLeads(getLeadsFromStorage());
+    function handleStorage() {
+      setLeads(getLeadsFromStorage());
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
   const filteredLeads = leads.filter(l =>
     l.fullName.toLowerCase().includes(leadSearch.toLowerCase()) ||
     l.phone?.toLowerCase().includes(leadSearch.toLowerCase()) ||
@@ -31,8 +47,29 @@ export default function Discounts() {
   }
   const discountPercent = getDiscountPercent(selectedLead, discountType);
 
-  // Local discounts state
-  const [discounts, setDiscounts] = useState([]);
+  // Local discounts state with persistence
+  function getDiscountsFromStorage(): Discount[] {
+    const data = localStorage.getItem('discounts');
+    if (data) {
+      try { return JSON.parse(data); } catch { return []; }
+    }
+    return [];
+  }
+  function saveDiscountsToStorage(discounts: Discount[]) {
+    localStorage.setItem('discounts', JSON.stringify(discounts));
+  }
+  const [discounts, setDiscounts] = useState<Discount[]>(getDiscountsFromStorage());
+  React.useEffect(() => {
+    // Keep in sync if discounts updated elsewhere
+    function handleStorage() {
+      setDiscounts(getDiscountsFromStorage());
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+  React.useEffect(() => {
+    saveDiscountsToStorage(discounts);
+  }, [discounts]);
   // For resetting the form
   const leadInputRef = useRef();
 
