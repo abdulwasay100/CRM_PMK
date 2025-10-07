@@ -58,16 +58,39 @@ function getLeadsFromStorage() {
 
 export default function Dashboard() {
   const [leads, setLeads] = React.useState(getLeadsFromStorage());
-  const [reminders, setReminders] = React.useState([]);
+  const [reminders, setReminders] = React.useState<any[]>([]);
   const navigate = useNavigate();
   React.useEffect(() => {
     setLeads(getLeadsFromStorage());
-    setReminders([]);
+    try {
+      const data = localStorage.getItem('reminders');
+      setReminders(data ? JSON.parse(data) : []);
+    } catch {
+      setReminders([]);
+    }
     function handleStorage() {
       setLeads(getLeadsFromStorage());
+      try {
+        const data = localStorage.getItem('reminders');
+        setReminders(data ? JSON.parse(data) : []);
+      } catch {
+        setReminders([]);
+      }
+    }
+    function handleRemindersUpdated() {
+      try {
+        const data = localStorage.getItem('reminders');
+        setReminders(data ? JSON.parse(data) : []);
+      } catch {
+        setReminders([]);
+      }
     }
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('remindersUpdated', handleRemindersUpdated as EventListener);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('remindersUpdated', handleRemindersUpdated as EventListener);
+    };
   }, []);
 
   // Removed campaigns feature

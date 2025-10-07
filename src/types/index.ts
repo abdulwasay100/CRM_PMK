@@ -5,6 +5,7 @@ export interface Lead {
   email: string;
   dob?: string; // Date of birth, optional
   age: number;
+  country?: string;
   city: string;
   parentName: string;
   inquirySource: 'Website' | 'Social Media' | 'Referral' | 'Advertisement' | 'Walk-in' | 'Phone Call';

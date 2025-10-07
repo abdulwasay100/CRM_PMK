@@ -18,6 +18,9 @@ function getLeadsFromStorage() {
   }
   return [];
 }
+function saveLeadsToStorage(leads: Lead[]) {
+  localStorage.setItem('leads', JSON.stringify(leads));
+}
 
 // Helper to calculate age from DOB
 function calculateAgeFromDOB(dob?: string): number {
@@ -339,8 +342,9 @@ export default function Leads() {
                   leadStatus: formData.get('leadStatus') as Lead['leadStatus'],
                   updatedAt: new Date().toISOString(),
                 };
-                // Mock data saving removed
-                setLeads(leads.map(l => l.id === updatedLead.id ? updatedLead : l)); // Placeholder for actual data saving
+                const nextLeads = leads.map(l => l.id === updatedLead.id ? updatedLead : l);
+                setLeads(nextLeads);
+                saveLeadsToStorage(nextLeads);
                 setModal({ open: false, lead: null, mode: 'view' });
               }
             }}>
@@ -423,8 +427,9 @@ export default function Leads() {
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setConfirmDelete({ open: false, lead: null })}>Cancel</Button>
               <Button variant="destructive" onClick={() => {
-                // Mock data removal removed
-                setLeads(leads.filter(l => l.id !== confirmDelete.lead!.id)); // Placeholder for actual data removal
+                const nextLeads = leads.filter(l => l.id !== confirmDelete.lead!.id);
+                setLeads(nextLeads);
+                saveLeadsToStorage(nextLeads);
                 setConfirmDelete({ open: false, lead: null });
               }}>Remove</Button>
             </div>

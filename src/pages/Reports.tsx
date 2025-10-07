@@ -16,6 +16,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
   AreaChart,
   Area
 } from "recharts";
@@ -88,25 +89,15 @@ export default function Reports() {
   const dailyInflow = Array.from(dailyMap.entries()).map(([date, count]) => ({ date, count }));
   const weeklyInflow = Array.from(weeklyMap.entries()).map(([week, count]) => ({ week, count }));
 
-  // 2. Conversion Rate by Course, Counselor, Source
-  const courseStats = {};
-  const counselorStats = {};
-  const sourceStats = {};
+  // 2. Conversion Rate by Course and Source
+  const courseStats: Record<string, { total: number; converted: number }> = {};
+  const sourceStats: Record<string, { total: number; converted: number }> = {};
   leads.forEach(l => {
     // Course
     if (l.interestedCourse) {
       if (!courseStats[l.interestedCourse]) courseStats[l.interestedCourse] = { total: 0, converted: 0 };
       courseStats[l.interestedCourse].total++;
       if (l.leadStatus === 'Converted') courseStats[l.interestedCourse].converted++;
-    }
-    // Counselor (from history)
-    if (l.history && l.history.length > 0) {
-      const counselor = l.history[0].counselor;
-      if (counselor) {
-        if (!counselorStats[counselor]) counselorStats[counselor] = { total: 0, converted: 0 };
-        counselorStats[counselor].total++;
-        if (l.leadStatus === 'Converted') counselorStats[counselor].converted++;
-      }
     }
     // Source
     if (l.inquirySource) {
@@ -116,13 +107,12 @@ export default function Reports() {
     }
   });
 
-  // 3. Location-wise Lead Generation
-  const cityStats = {};
+  // 3. Location-wise Lead Generation (Country-wise)
+  const countryStats = {} as Record<string, number>;
   leads.forEach(l => {
-    if (l.city) {
-      if (!cityStats[l.city]) cityStats[l.city] = 0;
-      cityStats[l.city]++;
-    }
+    const key = l.country || 'Unknown';
+    if (!countryStats[key]) countryStats[key] = 0;
+    countryStats[key]++;
   });
 
   // Removed fake/suspicious leads report
@@ -265,7 +255,7 @@ export default function Reports() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={false}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -275,6 +265,16 @@ export default function Reports() {
                   ))}
                 </Pie>
                 <Tooltip />
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  layout="horizontal"
+                  formatter={(value: any, entry: any) => {
+                    const total = coursePieData.reduce((sum, d) => sum + (d.value || 0), 0);
+                    const pct = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : '0.0';
+                    return `${value} (${pct}%)`;
+                  }}
+                />
               </PieChart>
             </ResponsiveContainer>
             ) : (
@@ -354,7 +354,7 @@ export default function Reports() {
               }))}>
                 <XAxis dataKey="course" />
                 <YAxis domain={[0, 100]} tickFormatter={v => v + '%'} />
-                <Tooltip formatter={v => v.toFixed(1) + '%'} />
+                <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
                 <Bar dataKey="rate" name="Conversion %">
                   {Object.keys(courseStats).map((_, idx) => (
                     <Cell key={idx} fill={chartColors[idx % chartColors.length]} />
@@ -365,30 +365,7 @@ export default function Reports() {
           ) : <div className="text-center text-muted-foreground">No data</div>}
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Conversion Rate by Counselor</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {Object.keys(counselorStats).length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={Object.entries(counselorStats).map(([counselor, stat]) => ({
-                counselor,
-                rate: stat.total > 0 ? (stat.converted / stat.total) * 100 : 0
-              }))}>
-                <XAxis dataKey="counselor" />
-                <YAxis domain={[0, 100]} tickFormatter={v => v + '%'} />
-                <Tooltip formatter={v => v.toFixed(1) + '%'} />
-                <Bar dataKey="rate" name="Conversion %">
-                  {Object.keys(counselorStats).map((_, idx) => (
-                    <Cell key={idx} fill={chartColors[idx % chartColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className="text-center text-muted-foreground">No data</div>}
-        </CardContent>
-      </Card>
+      {/* Removed Conversion Rate by Counselor */}
       <Card>
         <CardHeader>
           <CardTitle>Conversion Rate by Source</CardTitle>
@@ -407,13 +384,20 @@ export default function Reports() {
                   cx="50%"
                   cy="50%"
                   outerRadius={80}
-                  label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                  label={false}
+                  labelLine={false}
                 >
                   {Object.keys(sourceStats).map((_, idx) => (
                     <Cell key={idx} fill={chartColors[idx % chartColors.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={v => v.toFixed(1) + '%'} />
+                <Tooltip formatter={(v) => `${Number(v).toFixed(1)}%`} />
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  layout="horizontal"
+                  formatter={(value: any, entry: any) => `${value} (${Number(entry?.payload?.value ?? 0).toFixed(1)}%)`}
+                />
               </PieChart>
             </ResponsiveContainer>
           ) : <div className="text-center text-muted-foreground">No data</div>}
@@ -421,17 +405,17 @@ export default function Reports() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Location-wise Lead Generation</CardTitle>
+          <CardTitle>Location-wise Lead Generation (Country)</CardTitle>
         </CardHeader>
         <CardContent>
-          {Object.keys(cityStats).length > 0 ? (
+          {Object.keys(countryStats).length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={Object.entries(cityStats).map(([city, count]) => ({ city, count }))}>
-                <XAxis dataKey="city" />
+              <BarChart data={Object.entries(countryStats).map(([country, count]) => ({ country, count }))}>
+                <XAxis dataKey="country" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Bar dataKey="count">
-                  {Object.keys(cityStats).map((_, idx) => (
+                  {Object.keys(countryStats).map((_, idx) => (
                     <Cell key={idx} fill={chartColors[idx % chartColors.length]} />
                   ))}
                 </Bar>

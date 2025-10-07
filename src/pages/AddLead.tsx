@@ -195,6 +195,7 @@ export default function AddLead() {
       email: data.email,
       dob: data.dob || undefined,
       age,
+      country: selectedCountry ? (countries.find(c => c.isoCode === selectedCountry)?.name || '') : undefined,
       city: selectedCity, // Use selectedCity from state
       parentName: data.parentName,
       inquirySource,
@@ -234,6 +235,7 @@ export default function AddLead() {
         createdAt: now,
       };
       saveRemindersToStorage([newReminder, ...reminders]);
+      try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
     }
 
     // --- Auto-assign to groups ---
@@ -251,8 +253,7 @@ export default function AddLead() {
     if (ageGroup) groupTypes.push(ageGroup);
     // Course group
     groupTypes.push({ name: `${newLead.interestedCourse} Group`, type: 'Course', criteria: newLead.interestedCourse, match: (l) => l.interestedCourse === newLead.interestedCourse });
-    // City group
-    groupTypes.push({ name: `${newLead.city} Leads`, type: 'City', criteria: newLead.city, match: (l) => l.city === newLead.city });
+    // City group disabled per requirement: do not create city-based groups
     // Admission status group
     groupTypes.push({ name: `${newLead.leadStatus} Leads`, type: 'Admission Status', criteria: newLead.leadStatus, match: (l) => l.leadStatus === newLead.leadStatus });
 

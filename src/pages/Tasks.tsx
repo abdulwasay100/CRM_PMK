@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import React from "react";
 import { Lead } from "@/types";
-import { Reminder } from "@/data/mockData";
 import { toast } from "react-toastify";
 import { useRef } from "react";
 
@@ -23,6 +22,10 @@ interface Reminder {
   status: 'Pending' | 'In Progress' | 'Completed';
   isCompleted: boolean;
   createdAt: string;
+  title?: string;
+  description?: string;
+  assignedTo?: string;
+  priority?: 'Low' | 'Medium' | 'High';
 }
 
 function getRemindersFromStorage(): Reminder[] {
@@ -56,6 +59,9 @@ export default function Tasks() {
   // Save reminders to localStorage whenever they change
   React.useEffect(() => {
     saveRemindersToStorage(reminders);
+    try {
+      window.dispatchEvent(new Event('remindersUpdated'));
+    } catch {}
   }, [reminders]);
 
   // --- Reminder Creation State ---
@@ -106,9 +112,12 @@ export default function Tasks() {
       isCompleted: false,
       createdAt: new Date().toISOString(),
     };
-    const updatedReminders = [newReminder, ...reminders];
+    const updatedReminders: Reminder[] = [newReminder, ...reminders];
     setReminders(updatedReminders);
     saveRemindersToStorage(updatedReminders);
+    try {
+      window.dispatchEvent(new Event('remindersUpdated'));
+    } catch {}
     setSelectedLead(null);
     setPhoneInput('');
     setReminderType('Call back');
@@ -118,20 +127,25 @@ export default function Tasks() {
   }
 
   function handleMarkInProgress(reminderId: string) {
-    setReminders(reminders.map(r =>
-      r.id === reminderId ? { ...r, status: 'In Progress' } : r
-    ));
+    const next: Reminder[] = reminders.map(r => r.id === reminderId ? { ...r, status: 'In Progress' } : r);
+    setReminders(next);
+    saveRemindersToStorage(next);
+    try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
   }
 
   function handleMarkComplete(reminderId: string) {
-    setReminders(reminders.map(r =>
-      r.id === reminderId ? { ...r, status: 'Completed', isCompleted: true } : r
-    ));
+    const next: Reminder[] = reminders.map(r => r.id === reminderId ? { ...r, status: 'Completed', isCompleted: true } : r);
+    setReminders(next);
+    saveRemindersToStorage(next);
+    try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
     toast.success('COMPLETED');
   }
 
   function handleDeleteTask(reminderId: string) {
-    setReminders(reminders.filter(r => r.id !== reminderId));
+    const next: Reminder[] = reminders.filter(r => r.id !== reminderId);
+    setReminders(next);
+    saveRemindersToStorage(next);
+    try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
   }
 
   const filteredTasks = reminders.filter(task => {
