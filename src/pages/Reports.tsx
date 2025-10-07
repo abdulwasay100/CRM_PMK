@@ -72,7 +72,7 @@ export default function Reports() {
   // --- Real Data for Analytics ---
   const reminders = [];
   const groups = [];
-  const campaigns = JSON.parse(localStorage.getItem('campaigns') || '[]');
+  // Removed campaigns feature
 
   // 1. Daily/Weekly Lead Inflow
   const dailyMap = new Map();
@@ -125,9 +125,7 @@ export default function Reports() {
     }
   });
 
-  // 4. Fake/Suspicious Leads Report
-  const fakeLeads = leads.filter(l => !l.phone || !l.email || /^(000|123|999)/.test(l.phone));
-  const suspiciousLeads = leads.filter(l => l.phone && l.email && l.city && l.city.toLowerCase() === 'unknown');
+  // Removed fake/suspicious leads report
 
   // 5. Campaign Performance Stats
   // (Assume campaigns have sentCount, replyCount, viewCount fields if available)
@@ -442,53 +440,7 @@ export default function Reports() {
           ) : <div className="text-center text-muted-foreground">No data</div>}
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Fake/Suspicious Leads</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {(fakeLeads.length + suspiciousLeads.length) > 0 ? (
-            <ResponsiveContainer width="100%" height={150}>
-              <BarChart data={[
-                { type: 'Fake', count: fakeLeads.length },
-                { type: 'Suspicious', count: suspiciousLeads.length }
-              ]}>
-                <XAxis dataKey="type" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="count">
-                  <Cell fill={chartColors[0]} />
-                  <Cell fill={chartColors[1]} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className="text-center text-muted-foreground">No fake or suspicious leads</div>}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Campaign Performance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {campaigns.length > 0 ? (
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={campaigns.map(c => ({
-                name: c.name,
-                Sent: c.sentCount || 0,
-                Views: c.viewCount || 0,
-                Replies: c.replyCount || 0
-              }))}>
-                <XAxis dataKey="name" />
-                <YAxis allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="Sent" fill={chartColors[0]} />
-                <Bar dataKey="Views" fill={chartColors[1]} />
-                <Bar dataKey="Replies" fill={chartColors[2]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <div className="text-center text-muted-foreground">No campaigns</div>}
-        </CardContent>
-      </Card>
+      {/* Removed fake/suspicious leads and campaign performance sections */}
     </div>
   );
 }

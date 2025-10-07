@@ -38,7 +38,7 @@ export function TopNavbar() {
     const leads = [];
     const reminders = [];
     const groups = [];
-    const campaigns = JSON.parse(localStorage.getItem('campaigns') || '[]');
+    // Removed campaigns feature
     // 1. Lead count milestones
     const leadMilestones = [5, 10, 20, 100, 200, 300, 400, 500, 1000, 1500];
     const leadMilestone = leadMilestones.filter(m => leads.length >= m).slice(-1)[0];
@@ -46,7 +46,7 @@ export function TopNavbar() {
     const today = new Date().toISOString().slice(0, 10);
     const todaysReminders = reminders.filter(r => r.dueDate && r.dueDate.slice(0, 10) === today);
     // 3. Active campaigns
-    const activeCampaigns = campaigns.filter(c => c.status === 'Active');
+    const activeCampaigns = [];
     // 4. Group count milestones
     const groupMilestones = [10, 50, 100, 200];
     const groupMilestone = groupMilestones.filter(m => groups.length >= m).slice(-1)[0];
@@ -58,9 +58,9 @@ export function TopNavbar() {
     todaysReminders.forEach(r => notifs.push({ type: 'reminder', key: `reminder-${r.id}`, message: `You have a reminder for ${r.leadName} today.` }));
     activeCampaigns.forEach(c => notifs.push({ type: 'campaign', key: `campaign-${c.id}`, message: `Campaign "${c.name}" is active.` }));
     if (groupMilestone) notifs.push({ type: 'group', key: `groups-${groupMilestone}`, message: `You have created ${groupMilestone} groups.` });
-    fakeLeads.forEach(l => notifs.push({ type: 'fake', key: `fake-${l.id}`, message: `Fake lead detected: ${l.fullName || l.email || l.phone}` }));
+    // Removed fake lead notifications
     setNotifications(notifs);
-  }, [localStorage.getItem('campaigns')]);
+  }, []);
   const navigate = useNavigate();
   // Admin name state
   const [adminName, setAdminName] = useState('Admin User');

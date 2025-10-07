@@ -4,11 +4,9 @@ import {
   Users,
   UserPlus,
   Tag,
-  Megaphone,
   CheckSquare,
   Percent,
   MessageSquare,
-  TrendingUp,
   Settings,
   Home
 } from "lucide-react";
@@ -29,13 +27,10 @@ const menuItems = [
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Add Lead", url: "/leads/add", icon: UserPlus },
   { title: "Groups", url: "/groups", icon: Tag },
-  { title: "Retarget Students", url: "/retarget-students", icon: TrendingUp },
-  { title: "Detect Fake Leads", url: "/detect-fake-leads", icon: BarChart3 },
-  { title: "Campaigns", url: "/campaigns", icon: Megaphone },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
   { title: "Discounts", url: "/discounts", icon: Percent },
   { title: "WhatsApp & Email", url: "/whatsapp", icon: MessageSquare },
-  { title: "Reports", url: "/reports", icon: TrendingUp },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

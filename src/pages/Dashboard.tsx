@@ -1,7 +1,6 @@
 import { 
   Users, 
   CheckSquare, 
-  Megaphone, 
   TrendingUp, 
   UserPlus, 
   Clock, 
@@ -71,18 +70,7 @@ export default function Dashboard() {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const [campaigns, setCampaigns] = useState(() => {
-    const stored = localStorage.getItem('campaigns');
-    return stored ? JSON.parse(stored) : [];
-  });
-  useEffect(() => {
-    const handler = () => {
-      const stored = localStorage.getItem('campaigns');
-      setCampaigns(stored ? JSON.parse(stored) : []);
-    };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, []);
+  // Removed campaigns feature
 
   // Stats
   const totalLeads = leads.length;
@@ -177,18 +165,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-success">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
-            <Megaphone className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{campaigns.filter(c => c.status === 'Active').length}</div>
-            <p className="text-xs text-muted-foreground">
-              {campaigns.length} total campaigns
-            </p>
-          </CardContent>
-        </Card>
+        {/* Removed campaigns card */}
 
         <Card className="border-l-4 border-l-destructive">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

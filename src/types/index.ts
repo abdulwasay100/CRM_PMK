@@ -34,18 +34,7 @@ export interface Group {
   createdAt: string;
 }
 
-export interface Campaign {
-  id: string;
-  name: string;
-  type: 'Email' | 'SMS' | 'WhatsApp' | 'Flyer';
-  targetGroups: string[];
-  status: 'Draft' | 'Active' | 'Completed' | 'Paused';
-  sentCount: number;
-  openRate: number;
-  clickRate: number;
-  createdAt: string;
-  scheduledAt?: string;
-}
+// Removed Campaign interface
 
 export interface Task {
   id: string;
@@ -88,10 +77,8 @@ export interface WhatsAppTemplate {
 export interface DashboardStats {
   totalLeads: number;
   totalTasks: number;
-  totalCampaigns: number;
   conversionRate: number;
   newLeadsToday: number;
   tasksCompleted: number;
-  activeCampaigns: number;
   revenue: number;
 }
