@@ -1,9 +1,11 @@
 {
-  "/api/auth/login/route": "app/api/auth/login/route.js",
   "/login/page": "app/login/page.js",
+  "/settings/page": "app/settings/page.js",
   "/leads/page": "app/leads/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/leads/add/page": "app/leads/add/page.js",
-  "/settings/page": "app/settings/page.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js"
+  "/signup/page": "app/signup/page.js",
+  "/api/auth/login/route": "app/api/auth/login/route.js",
+  "/api/auth/signup/route": "app/api/auth/signup/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/auth/change-password/route": "app/api/auth/change-password/route.js"
 }
