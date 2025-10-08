@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SearchContext } from "@/context/SearchContext";
+import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -22,27 +23,10 @@ type AppNotification = {
 
 export function TopNavbar() {
   const { search, setSearch } = React.useContext(SearchContext);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const isDark = localStorage.getItem('theme') === 'dark';
-      setDarkMode(isDark);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
   useEffect(() => {
     // Notifications generation simplified. Campaigns and other heavy logic removed.
     setNotifications([]);
@@ -86,8 +70,8 @@ export function TopNavbar() {
       </div>
 
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="sm" onClick={() => setDarkMode(d => !d)} aria-label="Toggle dark mode" suppressHydrationWarning>
-          {mounted ? (darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />) : <Moon className="w-5 h-5" />}
+        <Button variant="ghost" size="sm" onClick={toggleDarkMode} aria-label="Toggle dark mode" suppressHydrationWarning>
+          {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </Button>
         <div className="relative">
           <Button variant="ghost" size="sm" className="relative" onClick={() => setShowNotifications(v => !v)}>
