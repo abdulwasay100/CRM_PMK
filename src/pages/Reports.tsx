@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { Calendar, Download, FileText, TrendingUp, Users, Target, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,15 +125,78 @@ export default function Reports() {
   // 5. Campaign Performance Stats
   // (Assume campaigns have sentCount, replyCount, viewCount fields if available)
 
-  const downloadPDF = () => {
-    console.log("Downloading PDF report...");
-    // Implementation would go here
-  };
+  const triggerDownload = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
 
   const downloadExcel = () => {
-    console.log("Downloading Excel report...");
-    // Implementation would go here
-  };
+    const headers = [
+      'Full Name','Parent Name','Course','Age','City','Phone','Email','Lead Status','Source','Created At','Notes'
+    ]
+    const rows = leads.map((l: any) => [
+      l.fullName || '',
+      l.parentName || '',
+      l.interestedCourse || '',
+      l.age ?? '',
+      l.city || '',
+      l.phone || '',
+      l.email || '',
+      l.leadStatus || '',
+      l.inquirySource || '',
+      l.createdAt ? new Date(l.createdAt).toLocaleString() : '',
+      (l.notes || '').replace(/\n/g, ' ')
+    ])
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => (`"${String(v).replace(/"/g,'""')}"`)).join(','))
+      .join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
+    triggerDownload(blob, `crm-reports-${ts}.csv`)
+  }
+
+  const downloadPDF = async () => {
+    const pdfDoc = await PDFDocument.create()
+    const page = pdfDoc.addPage([595.28, 841.89]) // A4
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    let y = 800
+    const drawText = (text: string, size = 12, bold = false) => {
+      page.drawText(text, { x: 40, y, size, font: bold ? fontBold : font, color: rgb(0,0,0) })
+      y -= size + 6
+    }
+    // Header
+    drawText('CRM PMK - Reports Summary', 18, true)
+    drawText(new Date().toLocaleString(), 10)
+    y -= 6
+    // Key metrics
+    const totalLeads = leads.length
+    const converted = leads.filter((l: any) => l.leadStatus === 'Converted').length
+    const contacted = leads.filter((l: any) => l.leadStatus === 'Contacted').length
+    const notInterested = leads.filter((l: any) => l.leadStatus === 'Not Interested').length
+    const conversionRate = totalLeads ? ((converted/totalLeads)*100).toFixed(1) : '0.0'
+    drawText(`Total Leads: ${totalLeads}`, 12, true)
+    drawText(`Converted: ${converted}  |  Contacted: ${contacted}  |  Not Interested: ${notInterested}`)
+    drawText(`Conversion Rate: ${conversionRate}%`)
+    y -= 6
+    drawText('Recent Leads (up to 20):', 12, true)
+    leads.slice(-20).reverse().forEach((l: any, idx: number) => {
+      const line = `${idx+1}. ${l.fullName || ''}  |  ${l.interestedCourse || ''}  |  ${l.city || ''}  |  ${l.leadStatus || ''}`
+      if (y < 60) { y = 780; pdfDoc.addPage(); }
+      page.drawText(line, { x: 50, y, size: 10, font })
+      y -= 14
+    })
+    const pdfBytes = await pdfDoc.save()
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
+    triggerDownload(blob, `crm-report-${ts}.pdf`)
+  }
 
   const chartColors = [
     '#6366f1', // indigo

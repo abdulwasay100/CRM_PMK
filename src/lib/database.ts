@@ -100,6 +100,19 @@ export async function initializeDatabase() {
     `);
     console.log('✅ Reminders table created');
 
+    // Create lead history table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS lead_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        lead_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('✅ Lead history table created');
+
     // Insert default admin user if not exists
     const [existingAdmin] = await pool.execute(
       'SELECT id FROM users WHERE username = ?',
@@ -291,6 +304,11 @@ export async function getConvertedLeads() {
   return rows as any[];
 }
 
+export async function getConvertedByLead(leadId: number) {
+  const [rows] = await pool.execute('SELECT * FROM converted_leads WHERE lead_id = ? ORDER BY converted_at DESC', [leadId]);
+  return rows as any[];
+}
+
 // Reminders operations
 export type NewReminder = {
   lead_id: number;
@@ -348,4 +366,15 @@ export async function updateLeadReminder(
     [reminderType, reminderDue, reminderNotes || null, leadId]
   );
   return { affectedRows: (result as any).affectedRows };
+}
+
+// Lead history ops
+export async function addLeadHistory(leadId: number, action: string, details?: string) {
+  const [result] = await pool.execute('INSERT INTO lead_history (lead_id, action, details) VALUES (?, ?, ?)', [leadId, action, details || null]);
+  return { id: (result as any).insertId };
+}
+
+export async function getLeadHistory(leadId: number) {
+  const [rows] = await pool.execute('SELECT * FROM lead_history WHERE lead_id = ? ORDER BY created_at DESC', [leadId]);
+  return rows as any[];
 }
