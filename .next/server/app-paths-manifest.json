@@ -1,0 +1,12 @@
+{
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/leads/page": "app/leads/page.js",
+  "/leads/add/page": "app/leads/add/page.js",
+  "/groups/page": "app/groups/page.js",
+  "/tasks/page": "app/tasks/page.js",
+  "/discounts/page": "app/discounts/page.js",
+  "/whatsapp/page": "app/whatsapp/page.js",
+  "/reports/page": "app/reports/page.js",
+  "/settings/page": "app/settings/page.js"
+}

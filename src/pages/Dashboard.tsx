@@ -27,7 +27,7 @@ import {
   Legend
 } from "recharts";
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
 const leadsBySource = [
   { name: "Website", value: 45, color: "#3B82F6" },
@@ -59,7 +59,7 @@ function getLeadsFromStorage() {
 export default function Dashboard() {
   const [leads, setLeads] = React.useState(getLeadsFromStorage());
   const [reminders, setReminders] = React.useState<any[]>([]);
-  const navigate = useNavigate();
+  const navigate = useRouter();
   React.useEffect(() => {
     setLeads(getLeadsFromStorage());
     try {
@@ -152,7 +152,7 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">Welcome back! Here's what's happening with your CRM.</p>
         </div>
-        <Button className="bg-gradient-primary hover:opacity-90" onClick={() => navigate("/leads/add")}>
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={() => navigate.push("/leads/add")}>
           <UserPlus className="w-4 h-4 mr-2" />
           Add New Lead
         </Button>

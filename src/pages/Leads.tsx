@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lead } from "@/types";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import React from "react";
 import { matchesAllTermsInFields } from "@/lib/utils";
 import { SearchContext } from "@/context/SearchContext";
@@ -45,7 +45,7 @@ function getRemindersFromStorage() {
 }
 
 export default function Leads() {
-  const navigate = useNavigate();
+  const navigate = useRouter();
   const { search } = React.useContext(SearchContext);
   const [statusFilter, setStatusFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
@@ -117,7 +117,7 @@ export default function Leads() {
           <p className="text-muted-foreground">Manage and track all your leads. Prevent duplicate entries by phone number. View lead history and merge duplicates if needed.</p>
         </div>
         <Button 
-          onClick={() => navigate("/leads/add")}
+          onClick={() => navigate.push("/leads/add")}
           className="bg-gradient-primary hover:opacity-90"
         >
           <UserPlus className="w-4 h-4 mr-2" />

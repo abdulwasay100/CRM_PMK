@@ -1,4 +1,5 @@
-import { NavLink, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Users,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "Dashboard", url: "/", icon: Home },
+  { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Leads", url: "/leads", icon: Users },
   { title: "Add Lead", url: "/leads/add", icon: UserPlus },
   { title: "Groups", url: "/groups", icon: Tag },
@@ -36,12 +37,12 @@ const menuItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const location = useLocation();
+  const pathname = usePathname();
   const isCollapsed = state === "collapsed";
 
   const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname.startsWith(path);
+    if (path === "/dashboard") return pathname === "/dashboard" || pathname === "/";
+    return pathname.startsWith(path);
   };
 
   return (
@@ -77,20 +78,17 @@ export function AppSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className={({ isActive: linkActive }) =>
-                        `flex items-center px-6 py-3 text-sm font-medium transition-colors duration-200 ${
-                          linkActive || isActive(item.url)
-                            ? "bg-sidebar-accent text-sidebar-primary border-r-2 border-sidebar-primary"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary"
-                        }`
-                      }
+                    <Link
+                      href={item.url}
+                      className={`flex items-center px-6 py-3 text-sm font-medium transition-colors duration-200 ${
+                        isActive(item.url)
+                          ? "bg-sidebar-accent text-sidebar-primary border-r-2 border-sidebar-primary"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary"
+                      }`}
                     >
                       <item.icon className={`${isCollapsed ? "w-5 h-5" : "w-5 h-5 mr-3"}`} />
                       {!isCollapsed && <span>{item.title}</span>}
-                    </NavLink>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

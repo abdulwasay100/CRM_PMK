@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +90,7 @@ function calculateAgeFromDOB(dob: string): number {
 }
 
 export default function AddLead() {
-  const navigate = useNavigate();
+  const navigate = useRouter();
   const { search } = React.useContext(SearchContext);
   const [duplicateLead, setDuplicateLead] = useState<Lead | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
@@ -288,7 +288,7 @@ export default function AddLead() {
     saveGroupsToStorage(dedupedGroups);
     setGroups(dedupedGroups);
     toast.success("Lead added successfully!");
-    navigate("/leads");
+    navigate.push("/leads");
   };
 
   // --- Offer & Message Generator State ---
@@ -485,7 +485,7 @@ export default function AddLead() {
       <div className="flex items-center gap-4">
         <Button 
           variant="outline" 
-          onClick={() => navigate("/leads")}
+          onClick={() => navigate.push("/leads")}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -896,7 +896,7 @@ export default function AddLead() {
           <Button 
             type="button" 
             variant="outline"
-            onClick={() => navigate("/leads")}
+            onClick={() => navigate.push("/leads")}
           >
             Cancel
           </Button>

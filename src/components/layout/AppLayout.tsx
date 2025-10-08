@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { TopNavbar } from "./TopNavbar";
 import { SearchProvider } from "@/context/SearchContext";
 
-export function AppLayout() {
+interface AppLayoutProps {
+  children: React.ReactNode;
+}
+
+export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SearchProvider>
       <SidebarProvider defaultOpen={true}>
@@ -14,7 +17,7 @@ export function AppLayout() {
           <div className="flex-1 flex flex-col">
             <TopNavbar />
             <main className="flex-1 p-6 overflow-auto">
-              <Outlet />
+              {children}
             </main>
           </div>
         </div>

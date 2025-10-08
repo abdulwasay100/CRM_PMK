@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SearchContext } from "@/context/SearchContext";
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRouter } from "next/navigation";
 
 export function TopNavbar() {
   const { search, setSearch } = React.useContext(SearchContext);
@@ -61,7 +61,7 @@ export function TopNavbar() {
     // Removed fake lead notifications
     setNotifications(notifs);
   }, []);
-  const navigate = useNavigate();
+  const router = useRouter();
   // Admin name state
   const [adminName, setAdminName] = useState('Admin User');
   useEffect(() => {
@@ -129,8 +129,8 @@ export function TopNavbar() {
           <DropdownMenuContent align="end" className="w-56 bg-popover border border-border">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/settings')}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>Profile</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Logout</DropdownMenuItem>
           </DropdownMenuContent>
