@@ -280,11 +280,11 @@ export default function AddLead() {
     // Age groups (non-overlapping)
     let ageGroup = null;
     if (age >= 4 && age <= 7) {
-      ageGroup = { name: 'Age 4-7', type: 'Age', criteria: 'Age 4-7', match: (l) => l.age >= 4 && l.age <= 7 };
+      ageGroup = { name: 'Age 4-7', type: 'Age', criteria: 'Age 4-7', match: (l: Lead) => l.age >= 4 && l.age <= 7 };
     } else if (age >= 8 && age <= 12) {
-      ageGroup = { name: 'Age 8-12', type: 'Age', criteria: 'Age 8-12', match: (l) => l.age >= 8 && l.age <= 12 };
+      ageGroup = { name: 'Age 8-12', type: 'Age', criteria: 'Age 8-12', match: (l: Lead) => l.age >= 8 && l.age <= 12 };
     } else if (age >= 13 && age <= 16) {
-      ageGroup = { name: 'Age 13-16', type: 'Age', criteria: 'Age 13-16', match: (l) => l.age >= 13 && l.age <= 16 };
+      ageGroup = { name: 'Age 13-16', type: 'Age', criteria: 'Age 13-16', match: (l: Lead) => l.age >= 13 && l.age <= 16 };
     }
     if (ageGroup) groupTypes.push(ageGroup);
     // Course group
@@ -407,8 +407,8 @@ export default function AddLead() {
 
   // Handler for file input
   function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) {
-      setAttachments(prev => [...prev, ...Array.from(e.target.files)]);
+    if (e.target.files && e.target.files.length > 0) {
+      setAttachments(prev => [...prev, ...Array.from(e.target.files!)]);
     }
   }
   function handleRemoveAttachment(index: number) {
@@ -433,12 +433,12 @@ export default function AddLead() {
   // State for selected similar lead box
   const [selectedSimilarLeadId, setSelectedSimilarLeadId] = React.useState<string | null>(null);
 
-  const lead = selectedSimilarLeadId ? matchingLeads.find(l => l.id === selectedSimilarLeadId) : undefined;
+  const lead = selectedSimilarLeadId ? matchingLeads.find((l: Lead) => l.id === selectedSimilarLeadId) : undefined;
 
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
     const phone = e.target.value;
     const allLeads: Lead[] = []; // Placeholder for leads
-    const found = allLeads.find(l => l.phone === phone);
+    const found = allLeads.find((l: Lead) => l.phone === phone);
     if (found) {
       setDuplicateLead(found);
     } else {
@@ -553,7 +553,11 @@ export default function AddLead() {
                 </div>
                 <div>
                   <label>Date of Birth (optional)</label>
-                  <input type="date" {...register("dob")} />
+                  <Input 
+                    type="date" 
+                    {...register("dob")} 
+                    className="w-[85%] text-lg"
+                  />
                   {watchedDOB ? (
                     <div className="mt-2">
                       <label>Calculated Age</label>
@@ -592,38 +596,43 @@ export default function AddLead() {
                 </div>
                 <div>
                   <label>Country</label>
-                  <select
+                  <Select
                     value={selectedCountry}
-                    onChange={e => {
-                      setSelectedCountry(e.target.value);
+                    onValueChange={(value) => {
+                      setSelectedCountry(value);
                       setSelectedCity('');
                       setValue('city', '');
                     }}
-                    className="border p-2 rounded w-full"
                   >
-                    <option value="">Select country</option>
-                    {countries.map(c => (
-                      <option key={c.isoCode} value={c.isoCode}>{c.name}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-[85%] text-lg">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map(c => (
+                        <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label>City</label>
-                  <select
+                  <Select
                     value={selectedCity}
-                    onChange={e => {
-                      setSelectedCity(e.target.value);
-                      setValue('city', e.target.value);
+                    onValueChange={(value) => {
+                      setSelectedCity(value);
+                      setValue('city', value);
                     }}
-                    className="border p-2 rounded w-full"
                     disabled={!selectedCountry}
-                    required={!!selectedCountry}
                   >
-                    <option value="">{selectedCountry ? 'Select city' : 'Select country first'}</option>
-                    {cities.map(city => (
-                      <option key={city.name} value={city.name}>{city.name}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-[85%] text-lg">
+                      <SelectValue placeholder={selectedCountry ? "Select city" : "Select country first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities?.map(city => (
+                        <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Input
@@ -832,7 +841,7 @@ export default function AddLead() {
                       type="file"
                       multiple
                       onChange={handleAttachmentChange}
-                      className="border p-2 rounded w-full"
+                      className="w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/80"
                     />
                     {attachments.length > 0 && (
                       <ul className="mt-2 space-y-1 text-sm">
@@ -850,10 +859,15 @@ export default function AddLead() {
                   {/* Send section */}
                   <div className="mb-2">
                     <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
-                    <select className="border p-2 rounded w-full max-w-xs" style={{maxWidth:'220px'}}>
-                      <option value="923119876543">923119876543</option>
-                      <option value="923112345678">923112345678</option>
-                    </select>
+                    <Select defaultValue="923119876543">
+                      <SelectTrigger className="w-full max-w-xs" style={{maxWidth:'220px'}}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="923119876543">923119876543</SelectItem>
+                        <SelectItem value="923112345678">923112345678</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex gap-4 justify-center mt-2">
                     <Button style={{background:'#25D366', color:'#fff'}} className="hover:opacity-90" variant="default" onClick={sendWhatsApp}>Send WhatsApp</Button>
@@ -1014,29 +1028,33 @@ export default function AddLead() {
         <CardContent className="space-y-4 text-lg !important">
           <div>
             <label className="block text-xs font-medium mb-1">Type</label>
-            <select
-              className="border p-2 rounded w-full"
+            <Select
               value={reminderType}
-              onChange={e => setReminderType(e.target.value as ReminderType)}
+              onValueChange={(value) => setReminderType(value as ReminderType)}
             >
-              <option value="Call back">Call back</option>
-              <option value="Send brochure">Send brochure</option>
-              <option value="Confirm registration">Confirm registration</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Call back">Call back</SelectItem>
+                <SelectItem value="Send brochure">Send brochure</SelectItem>
+                <SelectItem value="Confirm registration">Confirm registration</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Date</label>
-            <input
+            <Input
               type="date"
-              className="border p-2 rounded w-full"
+              className="w-full"
               value={reminderDate}
               onChange={e => setReminderDate(e.target.value)}
             />
           </div>
           <div>
             <label className="block text-xs font-medium mb-1">Notes</label>
-            <input
-              className="border p-2 rounded w-full"
+            <Input
+              className="w-full"
               value={reminderNotes}
               onChange={e => setReminderNotes(e.target.value)}
               placeholder="Add notes (optional)"
