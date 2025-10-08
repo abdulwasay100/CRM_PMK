@@ -14,8 +14,13 @@ export function middleware(request: NextRequest) {
   // Check for auth token in cookies
   const authToken = request.cookies.get('auth-token');
   
+  // Handle root route explicitly
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL(authToken ? '/dashboard' : '/login', request.url));
+  }
+
   // If no auth token and trying to access protected route, redirect to login
-  if (!authToken && pathname !== '/') {
+  if (!authToken) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
   

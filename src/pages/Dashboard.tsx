@@ -60,10 +60,12 @@ function getLeadsFromStorage() {
 export default function Dashboard() {
   const [leads, setLeads] = React.useState<any[]>([]);
   const [reminders, setReminders] = React.useState<any[]>([]);
+  const [mounted, setMounted] = React.useState(false);
   const navigate = useRouter();
   React.useEffect(() => {
     // Only run on client side
     if (typeof window === 'undefined') return;
+    setMounted(true);
     
     setLeads(getLeadsFromStorage());
     try {
@@ -220,7 +222,9 @@ export default function Dashboard() {
             <CardTitle>Monthly Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            {hasMonthlyData ? (
+            {!mounted ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">Loading chart...</div>
+            ) : hasMonthlyData ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -243,7 +247,9 @@ export default function Dashboard() {
             <CardTitle>Lead Sources</CardTitle>
           </CardHeader>
           <CardContent>
-            {leads.length > 0 ? (
+            {!mounted ? (
+              <div className="flex items-center justify-center h-[300px] text-muted-foreground">Loading chart...</div>
+            ) : leads.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie

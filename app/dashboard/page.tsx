@@ -1,7 +1,11 @@
 'use client'
 
 import { AppLayout } from '@/components/layout/AppLayout'
-import Dashboard from '@/pages/Dashboard'
+import dynamic from 'next/dynamic'
+
+const Dashboard = dynamic(() => import('@/pages/Dashboard'), {
+  ssr: false,
+})
 
 export default function DashboardPage() {
   return (

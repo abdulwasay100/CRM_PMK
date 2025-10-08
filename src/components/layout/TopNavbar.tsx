@@ -25,12 +25,15 @@ export function TopNavbar() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark';
-    }
-    return false;
-  });
+  const [darkMode, setDarkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const isDark = localStorage.getItem('theme') === 'dark';
+      setDarkMode(isDark);
+    } catch {}
+  }, []);
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -83,8 +86,8 @@ export function TopNavbar() {
       </div>
 
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="sm" onClick={() => setDarkMode(d => !d)} aria-label="Toggle dark mode">
-          {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        <Button variant="ghost" size="sm" onClick={() => setDarkMode(d => !d)} aria-label="Toggle dark mode" suppressHydrationWarning>
+          {mounted ? (darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />) : <Moon className="w-5 h-5" />}
         </Button>
         <div className="relative">
           <Button variant="ghost" size="sm" className="relative" onClick={() => setShowNotifications(v => !v)}>

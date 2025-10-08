@@ -1,7 +1,11 @@
 'use client'
 
 import { AppLayout } from '@/components/layout/AppLayout'
-import Reports from '@/pages/Reports'
+import dynamic from 'next/dynamic'
+
+const Reports = dynamic(() => import('@/pages/Reports'), {
+  ssr: false,
+})
 
 export default function ReportsPage() {
   return (
