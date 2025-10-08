@@ -83,6 +83,20 @@ export async function POST() {
       results.push(result)
     }
 
+    // Convert some leads to test the functionality
+    const { convertLead } = await import('@/lib/database')
+    try {
+      // Convert first lead (Abdul Rahman)
+      await convertLead(results[0].id)
+      console.log('✅ Converted Abdul Rahman')
+      
+      // Convert third lead (Abdul Bar) 
+      await convertLead(results[2].id)
+      console.log('✅ Converted Abdul Bar')
+    } catch (error) {
+      console.log('Note: Some leads may already be converted')
+    }
+
     return NextResponse.json({ 
       message: 'Sample data created successfully', 
       leads: results 

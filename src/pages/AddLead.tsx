@@ -96,6 +96,11 @@ export default function AddLead() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   
+  // State for converted leads data
+  const [convertedLeadsData, setConvertedLeadsData] = useState<any[]>([]);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isLeadConverted, setIsLeadConverted] = useState<boolean>(false);
+  
   // Load leads from database for search functionality
   React.useEffect(() => {
     const fetchLeads = async () => {
@@ -154,6 +159,31 @@ export default function AddLead() {
     setValue("parentName", parent || "");
   }, [search, setValue]);
 
+  // Watch for lead status changes and load converted data if needed
+  const watchedLeadStatus = watch("leadStatus");
+  React.useEffect(() => {
+    const isConverted = watchedLeadStatus === 'Converted';
+    setIsLeadConverted(isConverted);
+    
+    if (isConverted && selectedLeadId) {
+      loadConvertedLeadsData(selectedLeadId);
+    } else if (!isConverted) {
+      setConvertedLeadsData([]);
+    }
+  }, [watchedLeadStatus, selectedLeadId]);
+
+  // Function to load converted leads data for a specific lead
+  const loadConvertedLeadsData = async (leadId: string) => {
+    try {
+      const res = await fetch(`/api/converted-leads/by-lead?id=${leadId}`, { cache: 'no-store' });
+      const data = await res.json();
+      setConvertedLeadsData(data.converted || []);
+    } catch (error) {
+      console.error('Failed to fetch converted leads data:', error);
+      setConvertedLeadsData([]);
+    }
+  };
+
   // Handler to fill form fields from a selected lead
   function fillFormFromLead(lead: Lead) {
     setValue("fullName", lead.fullName || "");
@@ -163,7 +193,19 @@ export default function AddLead() {
     setValue("age", lead.age || undefined);
     setValue("city", lead.city || "");
     setValue("email", lead.email || "");
-    // Do not auto-fill inquirySource, interestedCourse, notes, or leadStatus
+    setValue("interestedCourse", lead.interestedCourse || "");
+    setValue("leadStatus", lead.leadStatus || "New");
+    
+    // Set selected lead ID and load converted data if lead is converted
+    setSelectedLeadId(lead.id);
+    const isConverted = lead.leadStatus === 'Converted';
+    setIsLeadConverted(isConverted);
+    
+    if (isConverted) {
+      loadConvertedLeadsData(lead.id);
+    } else {
+      setConvertedLeadsData([]);
+    }
   }
 
   // Reminder creation state for new lead
@@ -835,11 +877,23 @@ export default function AddLead() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td className="border px-2 py-1">&nbsp;</td>
-                      <td className="border px-2 py-1">&nbsp;</td>
-                      <td className="border px-2 py-1">&nbsp;</td>
-                    </tr>
+                    {convertedLeadsData.length > 0 ? (
+                      convertedLeadsData.map((converted, index) => (
+                        <tr key={index}>
+                          <td className="border px-2 py-1">{converted.full_name}</td>
+                          <td className="border px-2 py-1">{converted.course}</td>
+                          <td className="border px-2 py-1">
+                            {converted.converted_at ? new Date(converted.converted_at).toLocaleDateString() : 'N/A'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="border px-2 py-1 text-gray-400">No converted data</td>
+                        <td className="border px-2 py-1 text-gray-400">No converted data</td>
+                        <td className="border px-2 py-1 text-gray-400">No converted data</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </CardContent>
@@ -866,15 +920,69 @@ export default function AddLead() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="border px-2 py-1">{lead?.fullName || ''}</td>
-                      <td className="border px-2 py-1">{lead?.parentName || ''}</td>
-                      <td className="border px-2 py-1">{lead?.interestedCourse || ''}</td>
-                      <td className="border px-2 py-1">{lead?.age || ''}</td>
-                      <td className="border px-2 py-1">{lead?.city || ''}</td>
-                      <td className="border px-2 py-1">{lead?.phone || ''}</td>
-                      <td className="border px-2 py-1">{lead?.email || ''}</td>
-                      <td className="border px-2 py-1">{lead?.createdAt ? new Date(lead.createdAt).toLocaleDateString() : ''}</td>
-                      <td className="border px-2 py-1">{lead?.notes || ''}</td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">Lead converted - no history</span>
+                        ) : (
+                          lead?.fullName || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.parentName || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.interestedCourse || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.age || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.city || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.phone || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.email || ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.createdAt ? new Date(lead.createdAt).toLocaleDateString() : ''
+                        )}
+                      </td>
+                      <td className="border px-2 py-1">
+                        {isLeadConverted ? (
+                          <span className="text-gray-400">-</span>
+                        ) : (
+                          lead?.notes || ''
+                        )}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
