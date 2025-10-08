@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, MessageSquare, Send, Eye, Reply, Users, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { WhatsAppTemplate } from "@/types";
@@ -205,10 +206,10 @@ export default function WhatsApp() {
                   {selectedGroups.length === 0 ? 'Select groups...' : `${selectedGroups.length} group(s) selected`}
                 </Button>
                 {showGroupDropdown && (
-                  <div className="absolute z-10 bg-white dark:bg-background border rounded shadow-lg mt-1 max-h-48 overflow-auto w-64">
+                  <div className="absolute z-10 bg-popover border border-border rounded shadow-lg mt-1 max-h-48 overflow-auto w-64">
                     {groups.map(g => (
-                      <div key={g.id} className="px-3 py-2 hover:bg-muted cursor-pointer flex items-center gap-2" onClick={() => toggleGroup(g.id)}>
-                        <input type="checkbox" checked={selectedGroups.includes(g.id)} readOnly />
+                      <div key={g.id} className="px-3 py-2 hover:bg-accent cursor-pointer flex items-center gap-2" onClick={() => toggleGroup(g.id)}>
+                        <input type="checkbox" checked={selectedGroups.includes(g.id)} readOnly className="accent-primary" />
                         <span>{g.name}</span>
                       </div>
                     ))}
@@ -222,7 +223,7 @@ export default function WhatsApp() {
               <div className="flex flex-wrap gap-3">
                 {templateDefs.map(t => (
                   <label key={t.key} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedTemplates.includes(t.key)} onChange={() => toggleTemplate(t.key)} />
+                    <input type="checkbox" checked={selectedTemplates.includes(t.key)} onChange={() => toggleTemplate(t.key)} className="accent-primary" />
                     {t.label}
                   </label>
                 ))}
@@ -235,10 +236,15 @@ export default function WhatsApp() {
             </div>
             <div className="mb-2">
               <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
-              <select className="border p-2 rounded w-full max-w-xs" style={{maxWidth:'220px'}}>
-                <option value="923119876543">923119876543</option>
-                <option value="923112345678">923112345678</option>
-              </select>
+              <Select defaultValue="923119876543">
+                <SelectTrigger className="w-full max-w-xs" style={{maxWidth:'220px'}}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="923119876543">923119876543</SelectItem>
+                  <SelectItem value="923112345678">923112345678</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button style={{background:'#25D366', color:'#fff'}} className="hover:opacity-90 w-full mb-2 flex items-center justify-center gap-2" variant="default" onClick={sendWhatsApp}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.174.2-.298.3-.497.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51-.173-.007-.372-.009-.571-.009-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.099 3.2 5.077 4.363.711.306 1.263.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.288.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
@@ -262,19 +268,19 @@ export default function WhatsApp() {
             {/* Lead search/select */}
             <div>
               <label className="block text-xs font-medium mb-1">Search & select lead(s)</label>
-              <input
-                className="border p-2 rounded w-full mb-2"
+              <Input
+                className="w-full mb-2"
                 placeholder="Search by name, phone, or email..."
                 value={quickSearch}
                 onChange={e => setQuickSearch(e.target.value)}
               />
-              <div className="max-h-32 overflow-auto border rounded">
+              <div className="max-h-32 overflow-auto border border-border rounded bg-popover">
                 {quickLeadOptions.length === 0 && (
                   <div className="p-2 text-muted-foreground text-sm">No leads found</div>
                 )}
                 {quickLeadOptions.map(l => (
-                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted cursor-pointer" onClick={() => toggleQuickLead(l.id)}>
-                    <input type="checkbox" checked={quickSelectedLeads.includes(l.id)} readOnly />
+                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer" onClick={() => toggleQuickLead(l.id)}>
+                    <input type="checkbox" checked={quickSelectedLeads.includes(l.id)} readOnly className="accent-primary" />
                     <span>{l.fullName} ({l.phone}{l.email ? `, ${l.email}` : ''})</span>
                   </div>
                 ))}
@@ -287,10 +293,15 @@ export default function WhatsApp() {
             </div>
             <div className="mb-2">
               <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
-              <select className="border p-2 rounded w-full max-w-xs" style={{maxWidth:'220px'}}>
-                <option value="923119876543">923119876543</option>
-                <option value="923112345678">923112345678</option>
-              </select>
+              <Select defaultValue="923119876543">
+                <SelectTrigger className="w-full max-w-xs" style={{maxWidth:'220px'}}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="923119876543">923119876543</SelectItem>
+                  <SelectItem value="923112345678">923112345678</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button style={{background:'#25D366', color:'#fff'}} className="hover:opacity-90 w-full" variant="default" onClick={sendQuickWhatsApp}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 inline-block mr-2"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.174.2-.298.3-.497.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51-.173-.007-.372-.009-.571-.009-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.099 3.2 5.077 4.363.711.306 1.263.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.288.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>

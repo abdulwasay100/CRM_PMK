@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Plus, Percent, Gift, Calendar, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { mockDiscounts } from "@/data/mockData";
 import { Discount, Lead } from "@/types";
@@ -202,8 +203,8 @@ export default function Discounts() {
           {/* Lead Search */}
           <div>
             <label className="block text-xs font-medium mb-1">Search Lead</label>
-            <input
-              className="border p-2 rounded w-full mb-2"
+            <Input
+              className="w-full mb-2"
               placeholder="Search by name, phone, or email..."
               value={leadSearch}
               onChange={e => {
@@ -212,12 +213,12 @@ export default function Discounts() {
               }}
             />
             {leadSearch && (
-              <div className="max-h-32 overflow-auto border rounded">
+              <div className="max-h-32 overflow-auto border border-border rounded bg-popover">
                 {filteredLeads.length === 0 && (
                   <div className="p-2 text-muted-foreground text-sm">No leads found</div>
                 )}
                 {filteredLeads.map(l => (
-                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted cursor-pointer" onClick={() => { setSelectedLead(l); setLeadSearch(l.fullName); }}>
+                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer" onClick={() => { setSelectedLead(l); setLeadSearch(l.fullName); }}>
                     <span>{l.fullName} ({l.phone})</span>
                   </div>
                 ))}
@@ -228,13 +229,17 @@ export default function Discounts() {
           {selectedLead && (
             <div>
               <label className="block text-xs font-medium mb-1">Select Discount Type</label>
-              <select className="border p-2 rounded w-full" value={discountType} onChange={e => setDiscountType(e.target.value)}>
-                <option value="">Select type...</option>
-                <option value="Early Bird">Early Bird</option>
-                <option value="Sibling">Sibling</option>
-                <option value="Referral">Referral</option>
-                <option value="Special Offer">Special Offer</option>
-              </select>
+              <Select value={discountType} onValueChange={setDiscountType}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Early Bird">Early Bird</SelectItem>
+                  <SelectItem value="Sibling">Sibling</SelectItem>
+                  <SelectItem value="Referral">Referral</SelectItem>
+                  <SelectItem value="Special Offer">Special Offer</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
           {/* Show Discount Details and OK button */}

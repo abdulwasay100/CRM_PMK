@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Clock, CheckCircle, AlertCircle, User, Calendar, Bell, Phone, Mail, FileText, CheckSquare, Square, Filter, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -270,8 +271,8 @@ export default function Tasks() {
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 relative">
               <label className="block text-xs font-medium mb-1">Enter Phone Number</label>
-              <input
-                className="border p-2 w-full rounded"
+              <Input
+                className="w-full"
                 value={phoneInput}
                 onChange={e => {
                   setPhoneInput(e.target.value);
@@ -281,11 +282,11 @@ export default function Tasks() {
                 autoComplete="off"
               />
               {phoneInput && filteredLeadOptions.length > 0 && !selectedLead && (
-                <div className="absolute z-10 bg-white border rounded w-full mt-1 max-h-40 overflow-auto shadow-lg">
+                <div className="absolute z-10 bg-popover border border-border rounded w-full mt-1 max-h-40 overflow-auto shadow-lg">
                   {filteredLeadOptions.map(o => (
                     <div
                       key={o.value}
-                      className="px-3 py-2 hover:bg-muted cursor-pointer text-sm"
+                      className="px-3 py-2 hover:bg-accent cursor-pointer text-sm"
                       onClick={() => {
                         setSelectedLead(o.value);
                         setPhoneInput(o.phone);
@@ -304,29 +305,33 @@ export default function Tasks() {
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Type</label>
-              <select
-                className="border p-2 rounded"
+              <Select
                 value={reminderType}
-                onChange={e => setReminderType(e.target.value as ReminderType)}
+                onValueChange={(value) => setReminderType(value as ReminderType)}
               >
-                <option value="Call back">Call back</option>
-                <option value="Send brochure">Send brochure</option>
-                <option value="Confirm registration">Confirm registration</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Call back">Call back</SelectItem>
+                  <SelectItem value="Send brochure">Send brochure</SelectItem>
+                  <SelectItem value="Confirm registration">Confirm registration</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Date</label>
-              <input
+              <Input
                 type="date"
-                className="border p-2 rounded"
+                className="w-full"
                 value={reminderDate}
                 onChange={e => setReminderDate(e.target.value)}
               />
             </div>
             <div className="flex-1">
               <label className="block text-xs font-medium mb-1">Notes</label>
-              <input
-                className="border p-2 w-full rounded"
+              <Input
+                className="w-full"
                 value={reminderNotes}
                 onChange={e => setReminderNotes(e.target.value)}
                 placeholder="Add notes (optional)"
@@ -717,45 +722,53 @@ export default function Tasks() {
       </Tabs>
 
       <dialog ref={editModalRef} className="rounded-lg p-0 w-full max-w-md">
-        <form method="dialog" className="bg-white p-6 rounded-lg shadow-lg">
+        <form method="dialog" className="bg-card text-card-foreground p-6 rounded-lg shadow-lg border">
           <h2 className="text-xl font-bold mb-4">Edit Reminder</h2>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1">Type</label>
-            <select
-              className="border p-2 rounded w-full"
+            <Select
               value={editFields.type}
-              onChange={e => setEditFields(f => ({ ...f, type: e.target.value as Reminder['type'] }))}
+              onValueChange={(value) => setEditFields(f => ({ ...f, type: value as Reminder['type'] }))}
             >
-              <option value="Call back">Call back</option>
-              <option value="Send brochure">Send brochure</option>
-              <option value="Confirm registration">Confirm registration</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Call back">Call back</SelectItem>
+                <SelectItem value="Send brochure">Send brochure</SelectItem>
+                <SelectItem value="Confirm registration">Confirm registration</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1">Status</label>
-            <select
-              className="border p-2 rounded w-full"
+            <Select
               value={editFields.status}
-              onChange={e => setEditFields(f => ({ ...f, status: e.target.value as Reminder['status'] }))}
+              onValueChange={(value) => setEditFields(f => ({ ...f, status: value as Reminder['status'] }))}
             >
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-            </select>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1">Date</label>
-            <input
+            <Input
               type="date"
-              className="border p-2 rounded w-full"
+              className="w-full"
               value={editFields.dueDate}
               onChange={e => setEditFields(f => ({ ...f, dueDate: e.target.value }))}
             />
           </div>
           <div className="mb-3">
             <label className="block text-xs font-medium mb-1">Notes</label>
-            <input
-              className="border p-2 rounded w-full"
+            <Input
+              className="w-full"
               value={editFields.notes}
               onChange={e => setEditFields(f => ({ ...f, notes: e.target.value }))}
               placeholder="Add notes (optional)"
