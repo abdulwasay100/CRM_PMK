@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase, createLead, getLeads } from '@/lib/database'
+import { initializeDatabase, createLead, getLeads, convertLead } from '@/lib/database'
 
 export async function GET() {
   await initializeDatabase()
@@ -15,6 +15,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'full_name is required' }, { status: 400 })
     }
     const result = await createLead(body)
+    // If created with status Converted, also insert into converted_leads
+    try {
+      if ((body.lead_status || '').toLowerCase() === 'converted') {
+        await convertLead(Number(result.id))
+      }
+    } catch {}
     return NextResponse.json({ id: result.id }, { status: 201 })
   } catch (e) {
     return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 })

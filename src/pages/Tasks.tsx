@@ -135,11 +135,9 @@ export default function Tasks() {
     toast.success('COMPLETED');
   }
 
-  function handleDeleteTask(reminderId: string) {
-    const next: Reminder[] = reminders.filter(r => r.id !== reminderId);
-    setReminders(next);
-    saveRemindersToStorage(next);
-    try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
+  async function handleDeleteTask(reminderId: string) {
+    await fetch(`/api/reminders/${reminderId}`, { method: 'DELETE' });
+    setReminders(await fetchRemindersFromDB());
   }
 
   const filteredTasks = reminders.filter(task => {

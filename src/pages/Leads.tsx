@@ -291,6 +291,12 @@ export default function Leads() {
                         <Edit className="w-4 h-4 mr-1" />
                         Edit
                       </Button>
+                      {lead.leadStatus !== 'Converted' && (
+                        <Button variant="outline" size="sm" onClick={async () => {
+                          await fetch('/api/leads/convert', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leadId: lead.id }) })
+                          setLeads(await fetchLeadsFromDB())
+                        }}>Mark Converted</Button>
+                      )}
                       <Button variant="outline" size="sm" color="destructive" onClick={() => setConfirmDelete({ open: true, lead })}>
                         Remove
                       </Button>

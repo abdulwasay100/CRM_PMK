@@ -336,3 +336,16 @@ export async function deleteReminder(id: number) {
   const [result] = await pool.execute('DELETE FROM reminders WHERE id = ?', [id]);
   return { affectedRows: (result as any).affectedRows };
 }
+
+export async function updateLeadReminder(
+  leadId: number,
+  reminderType: string,
+  reminderDue: string,
+  reminderNotes?: string | null,
+) {
+  const [result] = await pool.execute(
+    'UPDATE leads SET reminder_type = ?, reminder_due = ?, reminder_notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [reminderType, reminderDue, reminderNotes || null, leadId]
+  );
+  return { affectedRows: (result as any).affectedRows };
+}
