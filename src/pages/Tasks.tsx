@@ -28,41 +28,42 @@ interface Reminder {
   priority?: 'Low' | 'Medium' | 'High';
 }
 
-function getRemindersFromStorage(): Reminder[] {
-  const data = localStorage.getItem('reminders');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
-}
-function saveRemindersToStorage(reminders: Reminder[]) {
-  localStorage.setItem('reminders', JSON.stringify(reminders));
+async function fetchRemindersFromDB(): Promise<Reminder[]> {
+  const res = await fetch('/api/reminders', { cache: 'no-store' });
+  const data = await res.json();
+  return (data.reminders || []).map((r: any) => ({
+    id: String(r.id),
+    leadId: String(r.lead_id),
+    leadName: r.lead_name,
+    type: (r.type as ReminderType) || 'Call back',
+    dueDate: r.due_date,
+    notes: r.notes || '',
+    status: (r.status as any) || 'Pending',
+    isCompleted: r.status === 'Completed',
+    createdAt: r.created_at,
+    title: '',
+    description: '',
+    assignedTo: '',
+    priority: 'Low',
+  }));
 }
 
 export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [counselorFilter, setCounselorFilter] = useState("All");
   const [activeTab, setActiveTab] = useState("all-tasks");
-  // Remove default reminders. We'll load reminders from storage or start with an empty array.
-  const [reminders, setReminders] = useState<Reminder[]>(getRemindersFromStorage());
+  // Load reminders from DB
+  const [reminders, setReminders] = useState<Reminder[]>([]);
 
-  // Load reminders from localStorage
   React.useEffect(() => {
-    setReminders(getRemindersFromStorage());
-    function handleStorage() {
-      setReminders(getRemindersFromStorage());
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    (async () => {
+      try {
+        setReminders(await fetchRemindersFromDB());
+      } catch {}
+    })();
   }, []);
 
-  // Save reminders to localStorage whenever they change
-  React.useEffect(() => {
-    saveRemindersToStorage(reminders);
-    try {
-      window.dispatchEvent(new Event('remindersUpdated'));
-    } catch {}
-  }, [reminders]);
+  // No localStorage syncing
 
   // --- Reminder Creation State ---
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
@@ -94,30 +95,27 @@ export default function Tasks() {
     ? leadOptions.filter(o => o.phone.replace(/\D/g, '').includes(phoneInput.replace(/\D/g, '')))
     : leadOptions;
 
-  function handleAddReminder() {
+  async function handleAddReminder() {
     if (!selectedLead || !reminderDate) {
       setReminderError('Please select a lead and date.');
       return;
     }
     const lead = leads.find(l => l.id === selectedLead);
     if (!lead) return;
-    const newReminder: Reminder = {
-      id: Date.now().toString() + Math.floor(Math.random() * 1000),
-      leadId: lead.id,
-      leadName: lead.fullName,
-      type: reminderType,
-      dueDate: reminderDate,
-      notes: reminderNotes,
-      status: 'Pending',
-      isCompleted: false,
-      createdAt: new Date().toISOString(),
-    };
-    const updatedReminders: Reminder[] = [newReminder, ...reminders];
-    setReminders(updatedReminders);
-    saveRemindersToStorage(updatedReminders);
-    try {
-      window.dispatchEvent(new Event('remindersUpdated'));
-    } catch {}
+    await fetch('/api/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lead_id: Number(lead.id),
+        lead_name: lead.fullName,
+        phone: (lead as any).phone,
+        type: reminderType,
+        due_date: reminderDate,
+        notes: reminderNotes,
+        status: 'Pending',
+      }),
+    });
+    setReminders(await fetchRemindersFromDB());
     setSelectedLead(null);
     setPhoneInput('');
     setReminderType('Call back');
@@ -126,18 +124,14 @@ export default function Tasks() {
     setReminderError('');
   }
 
-  function handleMarkInProgress(reminderId: string) {
-    const next: Reminder[] = reminders.map(r => r.id === reminderId ? { ...r, status: 'In Progress' } : r);
-    setReminders(next);
-    saveRemindersToStorage(next);
-    try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
+  async function handleMarkInProgress(reminderId: string) {
+    await fetch('/api/reminders/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: Number(reminderId), status: 'In Progress' }) });
+    setReminders(await fetchRemindersFromDB());
   }
 
-  function handleMarkComplete(reminderId: string) {
-    const next: Reminder[] = reminders.map(r => r.id === reminderId ? { ...r, status: 'Completed', isCompleted: true } : r);
-    setReminders(next);
-    saveRemindersToStorage(next);
-    try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
+  async function handleMarkComplete(reminderId: string) {
+    await fetch('/api/reminders/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: Number(reminderId), status: 'Completed' }) });
+    setReminders(await fetchRemindersFromDB());
     toast.success('COMPLETED');
   }
 
@@ -182,7 +176,9 @@ export default function Tasks() {
     }
   };
 
-  const counselors = Array.from(new Set(reminders.map(task => task.assignedTo)));
+  const counselors = Array.from(new Set(reminders.map(task => task.assignedTo))).filter(
+    (c): c is string => !!c && String(c).trim() !== ''
+  );
 
   // Helper functions for reminders
   const toggleReminder = (reminderId: string) => {

@@ -1,0 +1,24 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { initializeDatabase, createLead, getLeads } from '@/lib/database'
+
+export async function GET() {
+  await initializeDatabase()
+  const leads = await getLeads()
+  return NextResponse.json({ leads })
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await initializeDatabase()
+    const body = await req.json()
+    if (!body.full_name) {
+      return NextResponse.json({ error: 'full_name is required' }, { status: 400 })
+    }
+    const result = await createLead(body)
+    return NextResponse.json({ id: result.id }, { status: 201 })
+  } catch (e) {
+    return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 })
+  }
+}
+
+

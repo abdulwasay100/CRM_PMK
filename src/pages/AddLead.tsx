@@ -43,37 +43,22 @@ interface Reminder {
   createdAt: string;
 }
 
-// Helper functions for localStorage
-function getLeadsFromStorage(): Lead[] {
-  const data = localStorage.getItem('leads');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
+// DB helpers
+async function createLeadInDB(payload: any) {
+  const res = await fetch('/api/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
 }
-function saveLeadsToStorage(leads: Lead[]) {
-  localStorage.setItem('leads', JSON.stringify(leads));
-}
-function getGroupsFromStorage(): any[] {
-  const data = localStorage.getItem('groups');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
-}
-function saveGroupsToStorage(groups: any[]) {
-  localStorage.setItem('groups', JSON.stringify(groups));
-}
-
-function getRemindersFromStorage(): Reminder[] {
-  const data = localStorage.getItem('reminders');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
-}
-function saveRemindersToStorage(reminders: Reminder[]) {
-  localStorage.setItem('reminders', JSON.stringify(reminders));
+async function createReminderInDB(payload: any) {
+  const res = await fetch('/api/reminders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
 }
 
 // Helper to calculate age from DOB
@@ -107,9 +92,9 @@ export default function AddLead() {
   const watchedDOB = watch("dob");
   const watchedAge = watch("age");
 
-  // Load leads and groups from localStorage
-  const [leads, setLeads] = useState<Lead[]>(getLeadsFromStorage());
-  const [groups, setGroups] = useState<any[]>(getGroupsFromStorage());
+  // Local in-page suggestions only; not required for DB save
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
 
   // Multi-term, multi-field search for existing leads using global search
   const searchTerms = search
@@ -159,12 +144,7 @@ export default function AddLead() {
   const countries = Country.getAllCountries();
   const cities = selectedCountry ? City.getCitiesOfCountry(selectedCountry) : [];
 
-  const onSubmit = (data: LeadFormData) => {
-    // Load current leads and groups from localStorage
-    const currentLeads = getLeadsFromStorage();
-    const currentGroups = getGroupsFromStorage();
-    // Generate a unique id (timestamp + random)
-    const id = Date.now().toString() + Math.floor(Math.random() * 1000);
+  const onSubmit = async (data: LeadFormData) => {
     const now = new Date().toISOString();
     const validInquirySources = [
       'Website', 'Social Media', 'Referral', 'Advertisement', 'Walk-in', 'Phone Call'
@@ -188,74 +168,55 @@ export default function AddLead() {
     } else if (data.age) {
       age = data.age;
     }
-    const newLead: Lead = {
-      id,
-      fullName: data.fullName,
+    // Save lead in DB
+    const leadPayload = {
+      full_name: data.fullName,
+      parent_name: data.parentName,
+      date_of_birth: data.dob || null,
+      age,
+      country: selectedCountry ? (countries.find(c => c.isoCode === selectedCountry)?.name || '') : null,
+      city: selectedCity,
       phone: data.phone,
       email: data.email,
-      dob: data.dob || undefined,
-      age,
-      country: selectedCountry ? (countries.find(c => c.isoCode === selectedCountry)?.name || '') : undefined,
-      city: selectedCity, // Use selectedCity from state
-      parentName: data.parentName,
-      inquirySource,
-      interestedCourse,
       notes: data.notes,
-      leadStatus,
-      createdAt: now,
-      updatedAt: now,
-      history: [
-        {
-          id: 'h' + id,
-          leadId: id,
-          action: 'Lead Created',
-          details: 'Added via form',
-          timestamp: now,
-          counselor: 'N/A',
-        }
-      ]
+      inquiry_source: inquirySource,
+      interested_course: interestedCourse,
+      lead_status: leadStatus,
     };
-    // Add new lead to leads array
-    const updatedLeads = [newLead, ...currentLeads];
-    saveLeadsToStorage(updatedLeads);
-    setLeads(updatedLeads);
+    const leadRes = await createLeadInDB(leadPayload);
+    const newLeadId = leadRes?.id;
 
     // --- Save reminder if filled ---
-    if (reminderDate) {
-      const reminders = getRemindersFromStorage();
-      const newReminder: Reminder = {
-        id: Date.now().toString() + Math.floor(Math.random() * 1000),
-        leadId: id,
-        leadName: data.fullName,
+    if (reminderDate && newLeadId) {
+      await createReminderInDB({
+        lead_id: Number(newLeadId),
+        lead_name: data.fullName,
+        phone: data.phone,
         type: reminderType,
-        dueDate: reminderDate,
+        due_date: reminderDate,
         notes: reminderNotes,
         status: 'Pending',
-        isCompleted: false,
-        createdAt: now,
-      };
-      saveRemindersToStorage([newReminder, ...reminders]);
-      try { window.dispatchEvent(new Event('remindersUpdated')); } catch {}
+      });
     }
 
-    // --- Auto-assign to groups ---
-    let updatedGroups = [...currentGroups];
+    // --- Auto-assign to groups (client-only, optional) ---
+    let updatedGroups: any[] = [];
     const groupTypes = [];
     // Age groups (non-overlapping)
     let ageGroup = null;
-    if (newLead.age >= 4 && newLead.age <= 7) {
+    if (age >= 4 && age <= 7) {
       ageGroup = { name: 'Age 4-7', type: 'Age', criteria: 'Age 4-7', match: (l) => l.age >= 4 && l.age <= 7 };
-    } else if (newLead.age >= 8 && newLead.age <= 12) {
+    } else if (age >= 8 && age <= 12) {
       ageGroup = { name: 'Age 8-12', type: 'Age', criteria: 'Age 8-12', match: (l) => l.age >= 8 && l.age <= 12 };
-    } else if (newLead.age >= 13 && newLead.age <= 16) {
+    } else if (age >= 13 && age <= 16) {
       ageGroup = { name: 'Age 13-16', type: 'Age', criteria: 'Age 13-16', match: (l) => l.age >= 13 && l.age <= 16 };
     }
     if (ageGroup) groupTypes.push(ageGroup);
     // Course group
-    groupTypes.push({ name: `${newLead.interestedCourse} Group`, type: 'Course', criteria: newLead.interestedCourse, match: (l) => l.interestedCourse === newLead.interestedCourse });
+    groupTypes.push({ name: `${interestedCourse} Group`, type: 'Course', criteria: interestedCourse, match: (l: Lead) => l.interestedCourse === interestedCourse });
     // City group disabled per requirement: do not create city-based groups
     // Admission status group
-    groupTypes.push({ name: `${newLead.leadStatus} Leads`, type: 'Admission Status', criteria: newLead.leadStatus, match: (l) => l.leadStatus === newLead.leadStatus });
+    groupTypes.push({ name: `${leadStatus} Leads`, type: 'Admission Status', criteria: leadStatus, match: (l: Lead) => l.leadStatus === leadStatus });
 
     groupTypes.forEach((g) => {
       // Prevent duplicate group for same type/criteria
@@ -273,9 +234,9 @@ export default function AddLead() {
         };
         updatedGroups.push(group);
       }
-      // Add lead if not already present
-      if (!group.leadIds.includes(newLead.id)) {
-        group.leadIds.push(newLead.id);
+      // Add lead id if available
+      if (newLeadId && !group.leadIds.includes(String(newLeadId))) {
+        group.leadIds.push(String(newLeadId));
       }
     });
     // Remove all old age groups except the new three
@@ -284,8 +245,6 @@ export default function AddLead() {
       if (g.type === 'Age' && !allowedAgeCriteria.includes(g.criteria)) return false;
       return arr.findIndex(x => x.type === g.type && x.criteria === g.criteria) === idx;
     });
-    // Update groups in localStorage
-    saveGroupsToStorage(dedupedGroups);
     setGroups(dedupedGroups);
     toast.success("Lead added successfully!");
     navigate.push("/leads");

@@ -10,16 +10,28 @@ import React from "react";
 import { matchesAllTermsInFields } from "@/lib/utils";
 import { SearchContext } from "@/context/SearchContext";
 
-// Helper function for localStorage
-function getLeadsFromStorage() {
-  const data = localStorage.getItem('leads');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
-}
-function saveLeadsToStorage(leads: Lead[]) {
-  localStorage.setItem('leads', JSON.stringify(leads));
+async function fetchLeadsFromDB() {
+  const res = await fetch('/api/leads', { cache: 'no-store' });
+  const data = await res.json();
+  // map DB rows to UI shape
+  return (data.leads || []).map((l: any) => ({
+    id: String(l.id),
+    fullName: l.full_name,
+    parentName: l.parent_name,
+    dob: l.date_of_birth,
+    age: l.age ?? 0,
+    country: l.country,
+    city: l.city,
+    phone: l.phone,
+    email: l.email,
+    notes: l.notes,
+    inquirySource: l.inquiry_source,
+    interestedCourse: l.interested_course,
+    leadStatus: l.lead_status,
+    createdAt: l.created_at,
+    updatedAt: l.updated_at,
+    history: [],
+  } as any));
 }
 
 // Helper to calculate age from DOB
@@ -49,30 +61,29 @@ export default function Leads() {
   const { search } = React.useContext(SearchContext);
   const [statusFilter, setStatusFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
-  const [leads, setLeads] = useState(getLeadsFromStorage());
+  const [leads, setLeads] = useState<any[]>([]);
   const [modal, setModal] = useState<{ open: boolean; lead: any | null; mode: 'view' | 'edit' }>({ open: false, lead: null, mode: 'view' });
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; lead: any | null }>({ open: false, lead: null });
-  const [reminders, setReminders] = useState<any[]>(getRemindersFromStorage());
+  const [reminders, setReminders] = useState<any[]>([]);
 
-  // Reload leads from localStorage when the page is shown
+  // Load leads from DB
   React.useEffect(() => {
-    setLeads(getLeadsFromStorage());
-    setReminders(getRemindersFromStorage());
+    (async () => {
+      try {
+        setLeads(await fetchLeadsFromDB());
+      } catch {}
+    })();
   }, []);
 
-  // Optionally, listen for storage events (multi-tab sync)
+  // Load reminders from DB
   React.useEffect(() => {
-    function handleStorage() {
-      setLeads(getLeadsFromStorage());
-      setReminders(getRemindersFromStorage());
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
-  React.useEffect(() => {
-    // Mock data loading removed
-    setReminders([]); // Placeholder for actual data fetching
+    (async () => {
+      try {
+        const res = await fetch('/api/reminders', { cache: 'no-store' });
+        const data = await res.json();
+        setReminders((data.reminders || []).map((r: any) => ({ id: String(r.id), leadId: String(r.lead_id), leadName: r.lead_name, type: r.type, dueDate: r.due_date, notes: r.notes, status: r.status })));
+      } catch {}
+    })();
   }, []);
 
   const filteredLeads = leads.filter(lead => {
@@ -322,7 +333,7 @@ export default function Leads() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4">{modal.mode === 'edit' ? 'Edit Lead' : 'View Lead'}</h2>
-            <form onSubmit={e => {
+            <form onSubmit={async e => {
               e.preventDefault();
               if (modal.mode === 'edit') {
                 // Save changes
@@ -342,9 +353,25 @@ export default function Leads() {
                   leadStatus: formData.get('leadStatus') as Lead['leadStatus'],
                   updatedAt: new Date().toISOString(),
                 };
-                const nextLeads = leads.map(l => l.id === updatedLead.id ? updatedLead : l);
-                setLeads(nextLeads);
-                saveLeadsToStorage(nextLeads);
+                await fetch(`/api/leads/${updatedLead.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    full_name: updatedLead.fullName,
+                    parent_name: updatedLead.parentName,
+                    date_of_birth: updatedLead.dob || null,
+                    age: updatedLead.age,
+                    country: (updatedLead as any).country,
+                    city: updatedLead.city,
+                    phone: updatedLead.phone,
+                    email: updatedLead.email,
+                    notes: updatedLead.notes,
+                    inquiry_source: updatedLead.inquirySource,
+                    interested_course: updatedLead.interestedCourse,
+                    lead_status: updatedLead.leadStatus,
+                  })
+                });
+                setLeads(await fetchLeadsFromDB());
                 setModal({ open: false, lead: null, mode: 'view' });
               }
             }}>
@@ -426,10 +453,9 @@ export default function Leads() {
             <p className="mb-4">Do you want to remove <b>{confirmDelete.lead.fullName}</b>?</p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setConfirmDelete({ open: false, lead: null })}>Cancel</Button>
-              <Button variant="destructive" onClick={() => {
-                const nextLeads = leads.filter(l => l.id !== confirmDelete.lead!.id);
-                setLeads(nextLeads);
-                saveLeadsToStorage(nextLeads);
+              <Button variant="destructive" onClick={async () => {
+                await fetch(`/api/leads/${confirmDelete.lead!.id}`, { method: 'DELETE' })
+                setLeads(await fetchLeadsFromDB());
                 setConfirmDelete({ open: false, lead: null });
               }}>Remove</Button>
             </div>

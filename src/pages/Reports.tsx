@@ -21,25 +21,29 @@ import {
   Area
 } from "recharts";
 
-// Helper function for localStorage
-function getLeadsFromStorage() {
-  const data = localStorage.getItem('leads');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
+// Fetch leads from backend (DB)
+async function fetchLeadsFromDB() {
+  const res = await fetch('/api/leads', { cache: 'no-store' });
+  const data = await res.json();
+  return (data.leads || []).map((l: any) => ({
+    id: String(l.id),
+    fullName: l.full_name,
+    parentName: l.parent_name,
+    createdAt: l.created_at,
+    interestedCourse: l.interested_course,
+    leadStatus: l.lead_status,
+    inquirySource: l.inquiry_source,
+    country: l.country,
+  }));
 }
 
 export default function Reports() {
   const [period, setPeriod] = useState("monthly");
-  const [leads, setLeads] = useState(getLeadsFromStorage());
+  const [leads, setLeads] = useState<any[]>([]);
   useEffect(() => {
-    setLeads(getLeadsFromStorage());
-    function handleStorage() {
-      setLeads(getLeadsFromStorage());
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    (async () => {
+      try { setLeads(await fetchLeadsFromDB()); } catch {}
+    })();
   }, []);
 
   // Group leads by period
@@ -71,8 +75,8 @@ export default function Reports() {
   const coursePieData = Array.from(courseMap.entries()).map(([name, value]) => ({ name, value, color: undefined }));
 
   // --- Real Data for Analytics ---
-  const reminders = [];
-  const groups = [];
+  const reminders: any[] = [];
+  const groups: any[] = [];
   // Removed campaigns feature
 
   // 1. Daily/Weekly Lead Inflow

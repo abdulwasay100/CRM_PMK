@@ -47,100 +47,40 @@ const monthlyData = [
   { month: "Jun", leads: 67, conversions: 21 }
 ];
 
-// Helper function for localStorage
-function getLeadsFromStorage() {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem('leads');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
+async function fetchDashboardMetrics() {
+  const res = await fetch('/api/dashboard/metrics', { cache: 'no-store' });
+  return res.json();
 }
 
 export default function Dashboard() {
   const [leads, setLeads] = React.useState<any[]>([]);
   const [reminders, setReminders] = React.useState<any[]>([]);
   const [mounted, setMounted] = React.useState(false);
+  const [{ totalLeads, newLeadsToday, conversionRate }, setTotals] = React.useState({ totalLeads: 0, newLeadsToday: 0, conversionRate: 0 });
+  const [leadsBySource, setLeadsBySourceState] = React.useState<any[]>([]);
+  const [monthlyData, setMonthlyDataState] = React.useState<any[]>([]);
   const navigate = useRouter();
   React.useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') return;
     setMounted(true);
-    
-    setLeads(getLeadsFromStorage());
-    try {
-      const data = localStorage.getItem('reminders');
-      setReminders(data ? JSON.parse(data) : []);
-    } catch {
-      setReminders([]);
-    }
-    
-    function handleStorage() {
-      setLeads(getLeadsFromStorage());
+    (async () => {
       try {
-        const data = localStorage.getItem('reminders');
-        setReminders(data ? JSON.parse(data) : []);
-      } catch {
-        setReminders([]);
-      }
-    }
-    
-    function handleRemindersUpdated() {
-      try {
-        const data = localStorage.getItem('reminders');
-        setReminders(data ? JSON.parse(data) : []);
-      } catch {
-        setReminders([]);
-      }
-    }
-    
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('remindersUpdated', handleRemindersUpdated as EventListener);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('remindersUpdated', handleRemindersUpdated as EventListener);
-    };
+        const data = await fetchDashboardMetrics();
+        setLeads(data.recentLeads || []);
+        setReminders(data.pendingTasks || []);
+        setTotals({
+          totalLeads: data.totals?.totalLeads || 0,
+          newLeadsToday: data.totals?.newLeadsToday || 0,
+          conversionRate: data.totals?.conversionRate || 0,
+        });
+        setMonthlyDataState(data.monthly || []);
+        setLeadsBySourceState(data.leadsBySource || []);
+      } catch {}
+    })();
   }, []);
 
   // Removed campaigns feature
 
-  // Stats
-  const totalLeads = leads.length;
-  const today = new Date().toISOString().slice(0, 10);
-  const newLeadsToday = leads.filter(l => l.createdAt && l.createdAt.slice(0, 10) === today).length;
-  const contacted = leads.filter(l => l.leadStatus === 'Contacted').length;
-  const converted = leads.filter(l => l.leadStatus === 'Converted').length;
-  const notInterested = leads.filter(l => l.leadStatus === 'Not Interested').length;
-  const conversionRate = totalLeads ? Math.round((converted / totalLeads) * 100) : 0;
-
-  // Lead sources for pie chart
-  const sources = ['Website', 'Social Media', 'Referral', 'Advertisement', 'Walk-in', 'Phone Call'];
-  const leadsBySource = sources.map(name => ({
-    name,
-    value: leads.filter(l => l.inquirySource === name).length,
-    color:
-      name === 'Website' ? '#3B82F6' :
-      name === 'Social Media' ? '#10B981' :
-      name === 'Referral' ? '#F59E0B' :
-      name === 'Advertisement' ? '#EF4444' :
-      name === 'Walk-in' ? '#8B5CF6' : '#06B6D4'
-  }));
-
-  // Monthly data for bar chart (group by month)
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthlyData = months.map((month, idx) => {
-    const leadsInMonth = leads.filter(l => {
-      const d = l.createdAt ? new Date(l.createdAt) : null;
-      return d && d.getMonth() === idx;
-    });
-    const conversions = leadsInMonth.filter(l => l.leadStatus === 'Converted').length;
-    return {
-      month,
-      leads: leadsInMonth.length,
-      conversions
-    };
-  });
+  // Data for charts now comes from API: leadsBySource, monthlyData
   const hasMonthlyData = monthlyData.some(d => d.leads > 0 || d.conversions > 0);
 
   // Recent leads
