@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "react-toastify";
 import { Lead } from "@/types";
 import React, { useState } from "react";
@@ -101,6 +102,9 @@ export default function AddLead() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [isLeadConverted, setIsLeadConverted] = useState<boolean>(false);
   
+  // State for date picker
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  
   // Load leads from database for search functionality
   React.useEffect(() => {
     const fetchLeads = async () => {
@@ -172,6 +176,15 @@ export default function AddLead() {
     }
   }, [watchedLeadStatus, selectedLeadId]);
 
+  // Sync date picker with form value
+  React.useEffect(() => {
+    if (watchedDOB) {
+      setSelectedDate(new Date(watchedDOB));
+    } else {
+      setSelectedDate(undefined);
+    }
+  }, [watchedDOB]);
+
   // Function to load converted leads data for a specific lead
   const loadConvertedLeadsData = async (leadId: string) => {
     try {
@@ -195,6 +208,13 @@ export default function AddLead() {
     setValue("email", lead.email || "");
     setValue("interestedCourse", lead.interestedCourse || "");
     setValue("leadStatus", lead.leadStatus || "New");
+    
+    // Set date picker
+    if (lead.dob) {
+      setSelectedDate(new Date(lead.dob));
+    } else {
+      setSelectedDate(undefined);
+    }
     
     // Set selected lead ID and load converted data if lead is converted
     setSelectedLeadId(lead.id);
@@ -553,9 +573,13 @@ export default function AddLead() {
                 </div>
                 <div>
                   <label>Date of Birth (optional)</label>
-                  <Input 
-                    type="date" 
-                    {...register("dob")} 
+                  <DatePicker
+                    value={selectedDate}
+                    onChange={(date) => {
+                      setSelectedDate(date);
+                      setValue("dob", date ? date.toISOString().split('T')[0] : undefined);
+                    }}
+                    placeholder="Select date of birth"
                     className="w-[85%] text-lg"
                   />
                   {watchedDOB ? (
