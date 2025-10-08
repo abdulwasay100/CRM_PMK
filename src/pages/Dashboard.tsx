@@ -49,6 +49,7 @@ const monthlyData = [
 
 // Helper function for localStorage
 function getLeadsFromStorage() {
+  if (typeof window === 'undefined') return [];
   const data = localStorage.getItem('leads');
   if (data) {
     try { return JSON.parse(data); } catch { return []; }
@@ -57,10 +58,13 @@ function getLeadsFromStorage() {
 }
 
 export default function Dashboard() {
-  const [leads, setLeads] = React.useState(getLeadsFromStorage());
+  const [leads, setLeads] = React.useState<any[]>([]);
   const [reminders, setReminders] = React.useState<any[]>([]);
   const navigate = useRouter();
   React.useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     setLeads(getLeadsFromStorage());
     try {
       const data = localStorage.getItem('reminders');
@@ -68,6 +72,7 @@ export default function Dashboard() {
     } catch {
       setReminders([]);
     }
+    
     function handleStorage() {
       setLeads(getLeadsFromStorage());
       try {
@@ -77,6 +82,7 @@ export default function Dashboard() {
         setReminders([]);
       }
     }
+    
     function handleRemindersUpdated() {
       try {
         const data = localStorage.getItem('reminders');
@@ -85,8 +91,10 @@ export default function Dashboard() {
         setReminders([]);
       }
     }
+    
     window.addEventListener('storage', handleStorage);
     window.addEventListener('remindersUpdated', handleRemindersUpdated as EventListener);
+    
     return () => {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('remindersUpdated', handleRemindersUpdated as EventListener);

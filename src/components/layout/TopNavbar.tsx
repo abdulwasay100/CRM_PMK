@@ -61,9 +61,20 @@ export function TopNavbar() {
     // Removed fake lead notifications
     setNotifications(notifs);
   }, []);
-  const router = useRouter();
+  
   // Admin name state
   const [adminName, setAdminName] = useState('Admin User');
+  
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
   useEffect(() => {
     function handleAdminNameUpdate(e) {
       const { firstName, lastName } = e.detail || {};
@@ -132,7 +143,7 @@ export function TopNavbar() {
             <DropdownMenuItem onClick={() => router.push('/settings')}>Profile</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
