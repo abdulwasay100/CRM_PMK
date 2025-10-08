@@ -3,6 +3,7 @@ import { Search, Filter, UserPlus, Phone, Mail, MapPin, Eye, Edit } from "lucide
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lead } from "@/types";
 import { useRouter } from "next/navigation";
@@ -337,7 +338,7 @@ export default function Leads() {
       {/* View/Edit Lead Modal */}
       {modal.open && modal.lead && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-lg border">
             <h2 className="text-xl font-bold mb-4">{modal.mode === 'edit' ? 'Edit Lead' : 'View Lead'}</h2>
             <form onSubmit={async e => {
               e.preventDefault();
@@ -384,62 +385,77 @@ export default function Leads() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium mb-1">Full Name</label>
-                  <input name="fullName" className="border p-2 w-full" defaultValue={modal.lead.fullName} disabled={modal.mode === 'view'} required />
+                  <Input name="fullName" className="w-full" defaultValue={modal.lead.fullName} disabled={modal.mode === 'view'} required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Phone</label>
-                  <input name="phone" className="border p-2 w-full" defaultValue={modal.lead.phone} disabled={modal.mode === 'view'} required />
+                  <Input name="phone" className="w-full" defaultValue={modal.lead.phone} disabled={modal.mode === 'view'} required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Email</label>
-                  <input name="email" className="border p-2 w-full" defaultValue={modal.lead.email} disabled={modal.mode === 'view'} required />
+                  <Input name="email" className="w-full" defaultValue={modal.lead.email} disabled={modal.mode === 'view'} required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Age</label>
-                  <input name="age" type="number" className="border p-2 w-full" defaultValue={modal.lead.age} disabled={modal.mode === 'view'} required min={3} max={18} />
+                  <Input name="age" type="number" className="w-full" defaultValue={modal.lead.age} disabled={modal.mode === 'view'} required min={3} max={18} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Parent Name</label>
-                  <input name="parentName" className="border p-2 w-full" defaultValue={modal.lead.parentName} disabled={modal.mode === 'view'} required />
+                  <Input name="parentName" className="w-full" defaultValue={modal.lead.parentName} disabled={modal.mode === 'view'} required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">City</label>
-                  <input name="city" className="border p-2 w-full" defaultValue={modal.lead.city} disabled={modal.mode === 'view'} required />
+                  <Input name="city" className="w-full" defaultValue={modal.lead.city} disabled={modal.mode === 'view'} required />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Inquiry Source</label>
-                  <select name="inquirySource" className="border p-2 w-full" defaultValue={modal.lead.inquirySource} disabled={modal.mode === 'view'} required>
-                    <option value="Website">Website</option>
-                    <option value="Social Media">Social Media</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Advertisement">Advertisement</option>
-                    <option value="Walk-in">Walk-in</option>
-                    <option value="Phone Call">Phone Call</option>
-                  </select>
+                  <Select name="inquirySource" defaultValue={modal.lead.inquirySource} disabled={modal.mode === 'view'} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Website">Website</SelectItem>
+                      <SelectItem value="Social Media">Social Media</SelectItem>
+                      <SelectItem value="Referral">Referral</SelectItem>
+                      <SelectItem value="Advertisement">Advertisement</SelectItem>
+                      <SelectItem value="Walk-in">Walk-in</SelectItem>
+                      <SelectItem value="Phone Call">Phone Call</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Interested Course</label>
-                  <select name="interestedCourse" className="border p-2 w-full" defaultValue={modal.lead.interestedCourse} disabled={modal.mode === 'view'} required>
-                    <option value="Math">Math</option>
-                    <option value="Science">Science</option>
-                    <option value="English">English</option>
-                    <option value="Programming">Programming</option>
-                    <option value="Art">Art</option>
-                    <option value="Music">Music</option>
-                  </select>
+                  <Select name="interestedCourse" defaultValue={modal.lead.interestedCourse} disabled={modal.mode === 'view'} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Math">Math</SelectItem>
+                      <SelectItem value="Science">Science</SelectItem>
+                      <SelectItem value="English">English</SelectItem>
+                      <SelectItem value="Programming">Programming</SelectItem>
+                      <SelectItem value="Art">Art</SelectItem>
+                      <SelectItem value="Music">Music</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Lead Status</label>
-                  <select name="leadStatus" className="border p-2 w-full" defaultValue={modal.lead.leadStatus} disabled={modal.mode === 'view'} required>
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Not Interested">Not Interested</option>
-                    <option value="Converted">Converted</option>
-                  </select>
+                  <Select name="leadStatus" defaultValue={modal.lead.leadStatus} disabled={modal.mode === 'view'} required>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="New">New</SelectItem>
+                      <SelectItem value="Contacted">Contacted</SelectItem>
+                      <SelectItem value="Not Interested">Not Interested</SelectItem>
+                      <SelectItem value="Converted">Converted</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-xs font-medium mb-1">Notes</label>
-                  <textarea name="notes" className="border p-2 w-full" defaultValue={modal.lead.notes} disabled={modal.mode === 'view'} rows={3} />
+                  <Textarea name="notes" className="w-full" defaultValue={modal.lead.notes} disabled={modal.mode === 'view'} rows={3} />
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-6">
@@ -454,7 +470,7 @@ export default function Leads() {
       {/* Remove Lead Confirmation Dialog */}
       {confirmDelete.open && confirmDelete.lead && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-sm">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-sm border">
             <h2 className="text-xl font-bold mb-4">Remove Lead</h2>
             <p className="mb-4">Do you want to remove <b>{confirmDelete.lead.fullName}</b>?</p>
             <div className="flex justify-end gap-2">

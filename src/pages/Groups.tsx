@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Plus, Users, Tag, MapPin, GraduationCap, Calendar, Paperclip, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Lead, Group } from "@/types";
 import React from "react";
@@ -211,10 +213,15 @@ export default function Groups() {
                 <div className="flex gap-2 mt-2">
                   <div className="mb-2 w-full">
                     <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
-                    <select className="border p-2 rounded w-full max-w-xs" style={{maxWidth:'220px'}}>
-                      <option value="923119876543">923119876543</option>
-                      <option value="923112345678">923112345678</option>
-                    </select>
+                    <Select defaultValue="923119876543">
+                      <SelectTrigger className="w-full max-w-xs" style={{maxWidth:'220px'}}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="923119876543">923119876543</SelectItem>
+                        <SelectItem value="923112345678">923112345678</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button style={{background:'#25D366', color:'#fff'}} variant="default" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => setMessageModal({ open: true, group, type: 'whatsapp' })}>
                     WhatsApp
@@ -256,42 +263,47 @@ export default function Groups() {
       {/* Create/Edit Group Modal */}
       {(showCreate === 'create' || showCreate === 'edit') && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-md border">
             <h2 className="text-xl font-bold mb-4">{showCreate === 'edit' ? 'Edit Group' : 'Create New Group'}</h2>
             <div className="mb-2">
               <label className="block mb-1">Name</label>
-              <input className="border p-2 w-full" value={newGroup.name} onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))} />
+              <Input className="w-full" value={newGroup.name} onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))} />
             </div>
             <div className="mb-2">
               <label className="block mb-1">Type</label>
-              <select className="border p-2 w-full" value={newGroup.type} onChange={e => setNewGroup(g => ({ ...g, type: e.target.value }))}>
-                <option value="Age">Age</option>
-                <option value="Course">Course</option>
-                <option value="City">City</option>
-                <option value="Admission Status">Admission Status</option>
-              </select>
+              <Select value={newGroup.type} onValueChange={value => setNewGroup(g => ({ ...g, type: value }))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Age">Age</SelectItem>
+                  <SelectItem value="Course">Course</SelectItem>
+                  <SelectItem value="City">City</SelectItem>
+                  <SelectItem value="Admission Status">Admission Status</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="mb-2">
               <label className="block mb-1">Criteria</label>
-              <input className="border p-2 w-full" value={newGroup.criteria} onChange={e => setNewGroup(g => ({ ...g, criteria: e.target.value }))} />
+              <Input className="w-full" value={newGroup.criteria} onChange={e => setNewGroup(g => ({ ...g, criteria: e.target.value }))} />
             </div>
             <div className="mb-2">
               <label className="block mb-1">Add/Search Leads <span className="text-destructive">*</span></label>
-              <input
-                className="border p-2 w-full mb-2"
+              <Input
+                className="w-full mb-2"
                 placeholder="Search by name, phone, or email..."
                 value={leadSearch}
                 onChange={e => { setLeadSearch(e.target.value); setEditingLead(null); setTempLead({}); }}
               />
               {/* Show search results or add new option */}
               {leadSearch && !editingLead && (
-                <div className="max-h-32 overflow-y-auto border rounded mb-2 bg-muted divide-y">
+                <div className="max-h-32 overflow-y-auto border border-border rounded mb-2 bg-popover divide-y">
                   {leads.filter(l =>
                     l.fullName?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.phone?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.email?.toLowerCase().includes(leadSearch.toLowerCase())
                   ).map(l => (
-                    <div key={l.id} className="p-2 cursor-pointer hover:bg-primary/10" onClick={() => { setEditingLead(l); setTempLead(l); }}>
+                    <div key={l.id} className="p-2 cursor-pointer hover:bg-accent" onClick={() => { setEditingLead(l); setTempLead(l); }}>
                       <div className="font-medium">{l.fullName || l.phone}</div>
                       <div className="text-xs text-muted-foreground">{l.phone} | {l.email}</div>
                     </div>
@@ -302,7 +314,7 @@ export default function Groups() {
                     l.phone?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.email?.toLowerCase().includes(leadSearch.toLowerCase())
                   ).length === 0 && (
-                    <div className="p-2 cursor-pointer hover:bg-primary/10" onClick={() => { setEditingLead({} as Lead); setTempLead({ fullName: leadSearch }); }}>
+                    <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => { setEditingLead({} as Lead); setTempLead({ fullName: leadSearch }); }}>
                       + Add new lead: <b>{leadSearch}</b>
                     </div>
                   )}
@@ -310,18 +322,18 @@ export default function Groups() {
               )}
               {/* Lead edit/add form */}
               {editingLead && (
-                <div className="border rounded p-3 mb-2 bg-muted">
+                <div className="border border-border rounded p-3 mb-2 bg-muted">
                   <div className="mb-2">
                     <label className="block text-xs mb-1">Name</label>
-                    <input className="border p-1 w-full" value={tempLead.fullName || ''} onChange={e => setTempLead(t => ({ ...t, fullName: e.target.value }))} />
+                    <Input className="w-full" value={tempLead.fullName || ''} onChange={e => setTempLead(t => ({ ...t, fullName: e.target.value }))} />
                   </div>
                   <div className="mb-2">
                     <label className="block text-xs mb-1">Phone</label>
-                    <input className="border p-1 w-full" value={tempLead.phone || ''} onChange={e => setTempLead(t => ({ ...t, phone: e.target.value }))} />
+                    <Input className="w-full" value={tempLead.phone || ''} onChange={e => setTempLead(t => ({ ...t, phone: e.target.value }))} />
                   </div>
                   <div className="mb-2">
                     <label className="block text-xs mb-1">Email</label>
-                    <input className="border p-1 w-full" value={tempLead.email || ''} onChange={e => setTempLead(t => ({ ...t, email: e.target.value }))} />
+                    <Input className="w-full" value={tempLead.email || ''} onChange={e => setTempLead(t => ({ ...t, email: e.target.value }))} />
                   </div>
                   <div className="flex gap-2 mt-2">
                     <Button size="sm" variant="outline" onClick={() => { setEditingLead(null); setTempLead({}); }}>Cancel</Button>
@@ -407,7 +419,7 @@ export default function Groups() {
       {/* Delete Group Confirmation Dialog */}
       {confirmDelete.open && confirmDelete.group && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-sm">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-sm border">
             <h2 className="text-xl font-bold mb-4">Delete Group</h2>
             <p className="mb-4">Do you really want to delete <b>{confirmDelete.group.name}</b>?</p>
             <div className="flex justify-end gap-2">
@@ -454,13 +466,13 @@ export default function Groups() {
       {messageModal.open && (
         <Dialog open={messageModal.open} onOpenChange={open => setMessageModal(d => ({ ...d, open }))}>
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-md border">
               <h2 className="text-xl font-bold mb-4">Send {messageModal.type === 'whatsapp' ? 'WhatsApp' : 'Email'} to Group</h2>
               <div className="mb-2">
                 <label className="block mb-1">Message</label>
-                <textarea className="border p-2 w-full h-24 mb-2" placeholder="Type your message here..." value={message} onChange={e => setMessage(e.target.value)} />
+                <Textarea className="w-full h-24 mb-2" placeholder="Type your message here..." value={message} onChange={e => setMessage(e.target.value)} />
                 <label className="block mb-1">Attachment <span className="text-destructive">*</span></label>
-                <input type="file" multiple onChange={handleAttachmentChange} className="border p-2 rounded w-full" />
+                <input type="file" multiple onChange={handleAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
                 {attachments.length > 0 && (
                   <ul className="mt-2 space-y-1 text-sm">
                     {attachments.map((file, idx) => (
@@ -502,13 +514,13 @@ export default function Groups() {
       {/* Leads Modal for Group */}
       {leadsModalGroup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg relative">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-lg relative border">
             <button className="absolute top-2 right-2 text-xl" onClick={() => { setLeadsModalGroup(null); setLeadsModalSelectedLead(null); }}>&times;</button>
             {!leadsModalSelectedLead ? (
               <>
                 <h2 className="text-xl font-bold mb-4">Leads in {leadsModalGroup.name}</h2>
-                <input
-                  className="border p-2 w-full mb-3"
+                <Input
+                  className="w-full mb-3"
                   placeholder="Search leads by name, phone, or email..."
                   value={leadsModalSearch}
                   onChange={e => setLeadsModalSearch(e.target.value)}
@@ -564,7 +576,7 @@ export default function Groups() {
       {/* Lead Info Modal */}
       {selectedLead && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow-lg w-full max-w-sm relative">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-sm relative border">
             <button className="absolute top-2 right-2 text-xl" onClick={() => setSelectedLead(null)}>&times;</button>
             <h2 className="text-xl font-bold mb-4">Lead Information</h2>
             <div className="space-y-2">
