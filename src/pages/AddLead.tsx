@@ -95,6 +95,38 @@ export default function AddLead() {
   // Local in-page suggestions only; not required for DB save
   const [leads, setLeads] = useState<Lead[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
+  
+  // Load leads from database for search functionality
+  React.useEffect(() => {
+    const fetchLeads = async () => {
+      try {
+        const res = await fetch('/api/leads', { cache: 'no-store' });
+        const data = await res.json();
+        const mappedLeads = (data.leads || []).map((l: any) => ({
+          id: String(l.id),
+          fullName: l.full_name,
+          parentName: l.parent_name,
+          dob: l.date_of_birth,
+          age: l.age ?? 0,
+          country: l.country,
+          city: l.city,
+          phone: l.phone,
+          email: l.email,
+          notes: l.notes,
+          inquirySource: l.inquiry_source,
+          interestedCourse: l.interested_course,
+          leadStatus: l.lead_status,
+          createdAt: l.created_at,
+          updatedAt: l.updated_at,
+          history: [],
+        } as any));
+        setLeads(mappedLeads);
+      } catch (error) {
+        console.error('Failed to fetch leads:', error);
+      }
+    };
+    fetchLeads();
+  }, []);
 
   // Multi-term, multi-field search for existing leads using global search
   const searchTerms = search
@@ -111,6 +143,7 @@ export default function AddLead() {
         ])
       )
     : [];
+
 
   // Auto-fill logic: map search bar values to form fields (always overwrite)
   React.useEffect(() => {
