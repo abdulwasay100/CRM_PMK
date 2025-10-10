@@ -115,17 +115,17 @@ export function TopNavbar() {
             )}
           </Button>
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-border rounded shadow-lg z-50 max-h-96 overflow-auto">
-              <div className="p-3 font-bold border-b flex items-center justify-between">
-                <span>Notifications</span>
+            <div className="absolute right-0 mt-2 w-80 bg-popover text-popover-foreground border border-border rounded-md shadow-lg z-50 max-h-96 overflow-auto">
+              <div className="p-3 font-semibold border-b flex items-center justify-between bg-muted/50">
+                <span className="text-foreground">Notifications</span>
                 <button className="text-xs text-primary hover:underline" onClick={() => loadNotifications()}>Refresh</button>
               </div>
               {notifications.length === 0 ? (
                 <div className="p-4 text-muted-foreground text-center">No notifications</div>
               ) : (
                 notifications.map((n) => (
-                  <div key={n.id} className="p-3 border-b last:border-b-0 text-sm">
-                    <div className="font-medium">{n.title}</div>
+                  <div key={n.id} className="p-3 border-b last:border-b-0 text-sm hover:bg-accent/50 transition-colors">
+                    <div className="font-medium text-foreground">{n.title}</div>
                     {n.message && <div className="text-xs text-muted-foreground mt-1">{n.message}</div>}
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-[10px] text-muted-foreground">{n.created_at ? new Date(n.created_at).toLocaleString() : ''}</span>
@@ -143,7 +143,7 @@ export function TopNavbar() {
                 ))
               )}
               {notifications.length >= pageSize && (
-                <div className="p-2 text-center">
+                <div className="p-2 text-center bg-popover">
                   <button
                     className="text-sm text-primary hover:underline"
                     onClick={async () => { const next = page + 1; await loadNotifications(next); }}
