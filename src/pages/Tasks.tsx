@@ -567,46 +567,41 @@ export default function Tasks() {
           <div className="space-y-4">
             {filteredTasks.map((task) => (
               <div key={task.id} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{getTypeIcon(task.type)}</span>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{task.title}</h3>
-                        <p className="text-sm text-muted-foreground">{task.description}</p>
-                      </div>
+                <div className="flex flex-col gap-3">
+                  {/* Top row: Lead name and status */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-base font-semibold text-foreground">
+                      {getTypeIcon(task.type)}
+                      <span>{task.leadName || 'Unknown Lead'}</span>
+                      <span className="text-muted-foreground font-normal text-sm">— {task.type}</span>
                     </div>
-                    
-                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="w-4 h-4" />
-                        Lead: {task.leadName}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <User className="w-4 h-4" />
-                        Assigned to: {task.assignedTo}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </div>
-                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(task.status)}`}>
+                      {getStatusIcon(task.status)}
+                      {task.status}
+                    </span>
+                  </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-2 py-1 bg-muted text-muted-foreground rounded-full text-xs">
-                        {task.type}
-                      </span>
+                  {/* Notes (optional) */}
+                  {task.notes && (
+                    <div className="text-sm text-muted-foreground">
+                      {task.notes}
+                    </div>
+                  )}
+
+                  {/* Meta row */}
+                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <User className="w-4 h-4" />
+                      Lead: {task.leadName}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      Due: {new Date(task.dueDate).toLocaleDateString()}
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-3">
-                    <div className="flex gap-2">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(task.status)}`}>
-                        {getStatusIcon(task.status)}
-                        {task.status}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 mt-2">
+                  {/* Actions */}
+                  <div className="flex items-center justify-end gap-2">
                       {task.status === 'Pending' && (
                         <>
                           <Button variant="outline" size="sm" onClick={() => handleMarkInProgress(task.id)}>
@@ -624,12 +619,11 @@ export default function Tasks() {
                       )}
                       <Button variant="outline" size="sm" onClick={() => openEdit(task)}>Edit</Button>
                       <Button variant="destructive" size="sm" onClick={() => handleDeleteTask(task.id)}>Remove</Button>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground">
-                      Created: {new Date(task.createdAt).toLocaleDateString()}
-                    </p>
                   </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Created: {new Date(task.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             ))}
