@@ -113,6 +113,20 @@ export async function initializeDatabase() {
     `);
     console.log('✅ Lead history table created');
 
+    // Create notifications table (id, type, title/message/meta, created_at)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT,
+        meta JSON NULL,
+        is_read TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Notifications table created');
+
     // Insert default admin user if not exists
     const [existingAdmin] = await pool.execute(
       'SELECT id FROM users WHERE username = ?',
@@ -377,4 +391,99 @@ export async function addLeadHistory(leadId: number, action: string, details?: s
 export async function getLeadHistory(leadId: number) {
   const [rows] = await pool.execute('SELECT * FROM lead_history WHERE lead_id = ? ORDER BY created_at DESC', [leadId]);
   return rows as any[];
+}
+
+// ---------------- Notifications helpers ----------------
+export type NotificationType = 'no_leads' | 'reminder_status' | 'reports';
+export type NewNotification = {
+  type: NotificationType;
+  title: string;
+  message?: string;
+  meta?: any;
+}
+
+export async function createNotification(n: NewNotification) {
+  const [result] = await pool.execute(
+    'INSERT INTO notifications (type, title, message, meta) VALUES (?, ?, ?, ?)',
+    [n.type, n.title, n.message || null, n.meta ? JSON.stringify(n.meta) : null]
+  );
+  return { id: (result as any).insertId };
+}
+
+export async function getNotifications(limit = 100) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 500));
+  // Some MySQL setups don't accept parameter binding in LIMIT; inline safe integer
+  const [rows] = await pool.execute(`SELECT * FROM notifications ORDER BY created_at DESC LIMIT ${safeLimit}`);
+  return rows as any[];
+}
+
+export async function markNotificationRead(id: number) {
+  const [result] = await pool.execute('UPDATE notifications SET is_read = 1 WHERE id = ?', [id]);
+  return { affectedRows: (result as any).affectedRows };
+}
+
+export async function scanLeadThresholdNotifications() {
+  const [rows] = await pool.execute('SELECT COUNT(*) AS cnt FROM leads');
+  const total = (rows as any[])[0]?.cnt || 0;
+  const thresholds = [5,10,20,50,100,150,200,250,300,350,400,450,500,600,700,800,900,1000];
+  for (const t of thresholds) {
+    if (total >= t) {
+      await pool.execute(
+        `INSERT INTO notifications (type, title, message, meta)
+         SELECT 'no_leads', CONCAT('Leads reached ', ?), CONCAT('Total leads count reached ', ?), JSON_OBJECT('count', ?)
+         FROM DUAL WHERE NOT EXISTS (
+           SELECT 1 FROM notifications WHERE type='no_leads' AND JSON_EXTRACT(meta,'$.count') = ?
+         )`,
+        [t, t, t, t]
+      );
+    }
+  }
+}
+
+export async function scanDueSoonReminderNotifications() {
+  // 1 hour due soon
+  const [withinHour] = await pool.execute(
+    `SELECT r.* FROM reminders r
+     WHERE r.status <> 'Completed' AND r.due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 1 HOUR)`
+  );
+  for (const r of withinHour as any[]) {
+    await pool.execute(
+      `INSERT INTO notifications (type, title, message, meta)
+       SELECT 'reminder_status', ?, ?, ? FROM DUAL
+       WHERE NOT EXISTS (
+         SELECT 1 FROM notifications WHERE type='reminder_status' AND JSON_EXTRACT(meta,'$.reminderId') = ? AND JSON_EXTRACT(meta,'$.tag')='due_1h'
+       )`,
+      [
+        `Reminder due soon (1h): ${r.lead_name}`,
+        `${r.type} due at ${r.due_date}`,
+        JSON.stringify({ reminderId: r.id, leadId: r.lead_id, tag: 'due_1h' }),
+        r.id,
+      ]
+    );
+  }
+  // 1 day due soon
+  const [withinDay] = await pool.execute(
+    `SELECT r.* FROM reminders r
+     WHERE r.status <> 'Completed' AND r.due_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 1 DAY)`
+  );
+  for (const r of withinDay as any[]) {
+    await pool.execute(
+      `INSERT INTO notifications (type, title, message, meta)
+       SELECT 'reminder_status', ?, ?, ? FROM DUAL
+       WHERE NOT EXISTS (
+         SELECT 1 FROM notifications WHERE type='reminder_status' AND JSON_EXTRACT(meta,'$.reminderId') = ? AND JSON_EXTRACT(meta,'$.tag')='due_1d'
+       )`,
+      [
+        `Reminder due soon (1d): ${r.lead_name}`,
+        `${r.type} due at ${r.due_date}`,
+        JSON.stringify({ reminderId: r.id, leadId: r.lead_id, tag: 'due_1d' }),
+        r.id,
+      ]
+    );
+  }
+}
+
+export async function getReminderById(id: number) {
+  const [rows] = await pool.execute('SELECT * FROM reminders WHERE id = ?', [id]);
+  return (rows as any[])[0] || null;
 }

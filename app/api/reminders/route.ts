@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase, createReminder, getReminders, updateLeadReminder } from '@/lib/database'
+import { initializeDatabase, createReminder, getReminders, updateLeadReminder, createNotification } from '@/lib/database'
 
 export async function GET() {
   await initializeDatabase()
@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
     // Also mirror minimal reminder fields into the lead row for dashboard queries
     try {
       await updateLeadReminder(Number(body.lead_id), body.type, body.due_date, body.notes || null)
+    } catch {}
+    try {
+      await createNotification({
+        type: 'reminder_status',
+        title: `Reminder created for ${body.lead_name}`,
+        message: `${body.type} on ${body.due_date}`,
+        meta: { reminderId: result.id, leadId: body.lead_id }
+      })
     } catch {}
     return NextResponse.json({ id: result.id }, { status: 201 })
   } catch (e) {
