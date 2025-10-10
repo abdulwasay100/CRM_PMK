@@ -519,12 +519,7 @@ export default function AddLead() {
       {duplicateLead && !mergeMode && (
         <div className="bg-warning-light text-warning p-2 rounded mt-2">
           <p>Duplicate lead detected for this phone number.</p>
-          <p>Lead History:</p>
-          <ul>
-            {duplicateLead.history.map(h => (
-              <li key={h.id}>{h.action}: {h.details} ({new Date(h.timestamp).toLocaleDateString()})</li>
-            ))}
-          </ul>
+          <p>Lead History: No history available (history functionality removed)</p>
           <button className="bg-primary text-white px-2 py-1 rounded mt-2" onClick={() => setMergeMode(true)}>Merge with this lead</button>
         </div>
       )}

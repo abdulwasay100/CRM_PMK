@@ -7,7 +7,11 @@ import {
   Target, 
   DollarSign,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Phone,
+  Mail,
+  GraduationCap,
+  MapPin
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,8 +87,8 @@ export default function Dashboard() {
   // Data for charts now comes from API: leadsBySource, monthlyData
   const hasMonthlyData = monthlyData.some(d => d.leads > 0 || d.conversions > 0);
 
-  // Recent leads
-  const recentLeads = [...leads].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 3);
+  // Recent leads - show latest 10 instead of 3
+  const recentLeads = [...leads].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 10);
   const pendingTasks = reminders.filter(task => task.status === "Pending").slice(0, 3);
 
   // After leadsBySource is defined, calculate total leads and add percentage to each source
@@ -227,17 +231,17 @@ export default function Dashboard() {
         {/* Recent Leads */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Leads</CardTitle>
+            <CardTitle>Recent Leads ({recentLeads.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {recentLeads.map((lead) => (
-                <div key={lead.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{lead.fullName}</p>
-                    <p className="text-sm text-muted-foreground">{lead.interestedCourse} • {lead.city}</p>
-                  </div>
-                  <div className="text-right">
+                <div key={lead.id} className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-medium text-base">{lead.fullName}</p>
+                      <p className="text-sm text-muted-foreground">{lead.parentName && `Parent: ${lead.parentName}`}</p>
+                    </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       lead.leadStatus === 'New' ? 'bg-primary-light text-primary' :
                       lead.leadStatus === 'Contacted' ? 'bg-warning-light text-warning' :
@@ -247,8 +251,37 @@ export default function Dashboard() {
                       {lead.leadStatus}
                     </span>
                   </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">{lead.phone || 'No phone'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">{lead.email || 'No email'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <GraduationCap className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">{lead.interestedCourse}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">{lead.city}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Created: {new Date(lead.createdAt).toLocaleDateString()}</span>
+                      <span>Age: {lead.age || 'N/A'}</span>
+                    </div>
+                  </div>
                 </div>
               ))}
+              {recentLeads.length === 0 && (
+                <div className="text-center text-muted-foreground py-8">No recent leads found</div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -261,15 +294,34 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {pendingTasks.map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div>
-                    <p className="font-medium">{task.leadName}</p>
-                    <p className="text-sm text-muted-foreground">{task.type} {task.notes ? `• ${task.notes}` : ''}</p>
+                <div key={task.id} className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-medium text-base">{task.leadName}</p>
+                      <p className="text-sm text-muted-foreground">{task.type}</p>
+                    </div>
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning-light text-warning">
+                      {task.status}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Due: {new Date(task.dueDate).toLocaleDateString()}
-                    </p>
+                  
+                  <div className="space-y-1 text-sm">
+                    {task.notes && (
+                      <div className="flex items-start gap-1">
+                        <Clock className="w-3 h-3 text-muted-foreground mt-0.5" />
+                        <span className="text-muted-foreground">{task.notes}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1">
+                      <Target className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <div className="text-xs text-muted-foreground">
+                      Created: {new Date(task.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
               ))}

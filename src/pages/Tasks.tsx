@@ -73,72 +73,189 @@ export default function Tasks() {
   const [reminderDate, setReminderDate] = useState('');
   const [reminderNotes, setReminderNotes] = useState('');
   const [reminderError, setReminderError] = useState('');
-  // --- Leads (from localStorage) ---
-  function getLeadsFromStorage(): Lead[] {
-    const data = localStorage.getItem('leads');
-    if (data) {
-      try { return JSON.parse(data); } catch { return []; }
+  // --- Leads (from database) ---
+  const [leads, setLeads] = useState<any[]>([]);
+  
+  async function fetchLeadsFromDB(): Promise<any[]> {
+    try {
+      const res = await fetch('/api/leads', { cache: 'no-store' });
+      const data = await res.json();
+      return data.leads || [];
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      return [];
     }
-    return [];
   }
-  const [leads, setLeads] = useState<Lead[]>(getLeadsFromStorage());
+  
   React.useEffect(() => {
-    setLeads(getLeadsFromStorage());
-    function handleStorage() {
-      setLeads(getLeadsFromStorage());
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    (async () => {
+      try {
+        setLeads(await fetchLeadsFromDB());
+      } catch (error) {
+        console.error('Error loading leads:', error);
+      }
+    })();
   }, []);
 
-  const leadOptions = leads.map(l => ({ value: l.id, label: `${l.fullName} (${l.phone})`, phone: l.phone }));
-  const filteredLeadOptions = phoneInput
-    ? leadOptions.filter(o => o.phone.replace(/\D/g, '').includes(phoneInput.replace(/\D/g, '')))
-    : leadOptions;
+  const leadOptions = leads.map(l => ({ 
+    value: l.id, 
+    label: `${l.full_name || 'Unknown'} (${l.phone || 'No Phone'})`, 
+    phone: l.phone || '',
+    name: l.full_name || '',
+    email: l.email || '',
+    parentName: l.parent_name || '',
+    city: l.city || ''
+  }));
+  
+  const filteredLeadOptions = React.useMemo(() => {
+    if (!phoneInput.trim()) return [];
+    
+    const searchTerm = phoneInput.toLowerCase().trim();
+    const phoneOnly = phoneInput.replace(/\D/g, '');
+    
+    return leadOptions.filter(o => {
+      // Search by phone number (digits only)
+      if (phoneOnly.length > 0 && o.phone.replace(/\D/g, '').includes(phoneOnly)) {
+        return true;
+      }
+      
+      // Search by name
+      if (o.name.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search by email
+      if (o.email.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search by parent name
+      if (o.parentName.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      // Search by city
+      if (o.city.toLowerCase().includes(searchTerm)) {
+        return true;
+      }
+      
+      return false;
+    });
+  }, [phoneInput, leadOptions]);
 
   async function handleAddReminder() {
     if (!selectedLead || !reminderDate) {
       setReminderError('Please select a lead and date.');
       return;
     }
+    
     const lead = leads.find(l => l.id === selectedLead);
-    if (!lead) return;
-    await fetch('/api/reminders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lead_id: Number(lead.id),
-        lead_name: lead.fullName,
-        phone: (lead as any).phone,
-        type: reminderType,
-        due_date: reminderDate,
-        notes: reminderNotes,
-        status: 'Pending',
-      }),
-    });
-    setReminders(await fetchRemindersFromDB());
-    setSelectedLead(null);
-    setPhoneInput('');
-    setReminderType('Call back');
-    setReminderDate('');
-    setReminderNotes('');
-    setReminderError('');
+    if (!lead) {
+      setReminderError('Selected lead not found.');
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: Number(lead.id),
+          lead_name: lead.full_name || 'Unknown',
+          phone: lead.phone || '',
+          type: reminderType,
+          due_date: reminderDate,
+          notes: reminderNotes,
+          status: 'Pending',
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create reminder');
+      }
+      
+      setReminders(await fetchRemindersFromDB());
+      setSelectedLead(null);
+      setPhoneInput('');
+      setReminderType('Call back');
+      setReminderDate('');
+      setReminderNotes('');
+      setReminderError('');
+      toast.success('Reminder added successfully!');
+    } catch (error) {
+      console.error('Error adding reminder:', error);
+      setReminderError('Failed to add reminder. Please try again.');
+      toast.error('Failed to add reminder');
+    }
   }
 
   async function handleMarkInProgress(reminderId: string) {
-    await fetch('/api/reminders/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: Number(reminderId), status: 'In Progress' }) });
-    setReminders(await fetchRemindersFromDB());
+    try {
+      const response = await fetch('/api/reminders/status', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ id: Number(reminderId), status: 'In Progress' }) 
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+      
+      setReminders(await fetchRemindersFromDB());
+      toast.success('Status updated to In Progress!');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
   }
 
   async function handleMarkComplete(reminderId: string) {
-    await fetch('/api/reminders/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: Number(reminderId), status: 'Completed' }) });
-    setReminders(await fetchRemindersFromDB());
-    toast.success('COMPLETED');
+    try {
+      const response = await fetch('/api/reminders/status', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ id: Number(reminderId), status: 'Completed' }) 
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+      
+      setReminders(await fetchRemindersFromDB());
+      toast.success('Task completed successfully!');
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
   }
 
   async function handleDeleteTask(reminderId: string) {
-    await fetch(`/api/reminders/${reminderId}`, { method: 'DELETE' });
-    setReminders(await fetchRemindersFromDB());
+    const reminder = reminders.find(r => r.id === reminderId);
+    if (!reminder) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this reminder?\n\n` +
+      `Lead: ${reminder.leadName}\n` +
+      `Type: ${reminder.type}\n` +
+      `Due Date: ${reminder.dueDate}\n` +
+      `Status: ${reminder.status}`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      const response = await fetch(`/api/reminders/${reminderId}`, { method: 'DELETE' });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete reminder');
+      }
+      
+      setReminders(await fetchRemindersFromDB());
+      toast.success('Reminder deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting reminder:', error);
+      toast.error('Failed to delete reminder');
+    }
   }
 
   const filteredTasks = reminders.filter(task => {
@@ -239,13 +356,30 @@ export default function Tasks() {
     editModalRef.current?.close();
   }
 
-  function saveEdit() {
-    setReminders(reminders.map(r =>
-      r.id === editReminderId
-        ? { ...r, ...editFields, isCompleted: editFields.status === 'Completed' }
-        : r
-    ));
-    closeEdit();
+  async function saveEdit() {
+    if (!editReminderId) return;
+    
+    try {
+      await fetch('/api/reminders/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: Number(editReminderId),
+          type: editFields.type,
+          status: editFields.status,
+          due_date: editFields.dueDate,
+          notes: editFields.notes,
+        }),
+      });
+      
+      // Refresh reminders from database
+      setReminders(await fetchRemindersFromDB());
+      closeEdit();
+      toast.success('Reminder updated successfully!');
+    } catch (error) {
+      console.error('Error updating reminder:', error);
+      toast.error('Failed to update reminder');
+    }
   }
 
   function duplicateReminder(reminder: Reminder) {
@@ -270,7 +404,7 @@ export default function Tasks() {
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 relative">
-              <label className="block text-xs font-medium mb-1">Enter Phone Number</label>
+              <label className="block text-xs font-medium mb-1">Search Lead</label>
               <Input
                 className="w-full"
                 value={phoneInput}
@@ -278,23 +412,35 @@ export default function Tasks() {
                   setPhoneInput(e.target.value);
                   setSelectedLead(null);
                 }}
-                placeholder="Type phone number..."
+                placeholder="Search by name, phone, email, parent name, or city..."
                 autoComplete="off"
               />
-              {phoneInput && filteredLeadOptions.length > 0 && !selectedLead && (
-                <div className="absolute z-10 bg-popover border border-border rounded w-full mt-1 max-h-40 overflow-auto shadow-lg">
-                  {filteredLeadOptions.map(o => (
-                    <div
-                      key={o.value}
-                      className="px-3 py-2 hover:bg-accent cursor-pointer text-sm"
-                      onClick={() => {
-                        setSelectedLead(o.value);
-                        setPhoneInput(o.phone);
-                      }}
-                    >
-                      {o.label}
+              {phoneInput.trim() && !selectedLead && (
+                <div className="absolute z-10 bg-popover border border-border rounded w-full mt-1 max-h-60 overflow-auto shadow-lg">
+                  {filteredLeadOptions.length > 0 ? (
+                    filteredLeadOptions.map(o => (
+                      <div
+                        key={o.value}
+                        className="px-3 py-3 hover:bg-accent cursor-pointer text-sm border-b border-border last:border-b-0"
+                        onClick={() => {
+                          setSelectedLead(o.value);
+                          setPhoneInput(`${o.name} (${o.phone})`);
+                        }}
+                      >
+                        <div className="font-medium text-foreground">{o.name}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          <div>📞 {o.phone}</div>
+                          {o.email && <div>📧 {o.email}</div>}
+                          {o.parentName && <div>👨‍👩‍👧‍👦 {o.parentName}</div>}
+                          {o.city && <div>📍 {o.city}</div>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+                      No leads found matching "{phoneInput}"
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
               {selectedLead && (

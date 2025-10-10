@@ -87,21 +87,35 @@ export default function Leads() {
     })();
   }, []);
 
-  const filteredLeads = leads.filter(lead => {
+  // Filter leads based on search and show latest 15 by default
+  const filteredLeads = React.useMemo(() => {
     // Split search by comma, trim, and lowercase each term
     const terms = search
       .split(',')
       .map(t => t.trim().toLowerCase())
       .filter(Boolean);
-    if (terms.length === 0) return true;
-    // Match all terms in any of the fields
-    return matchesAllTermsInFields(lead, terms, [
-      'fullName',
-      'phone',
-      'email',
-      'parentName',
-    ]);
-  });
+    
+    let filtered = leads;
+    
+    // If there's a search term, filter by search criteria
+    if (terms.length > 0) {
+      filtered = leads.filter(lead => 
+        matchesAllTermsInFields(lead, terms, [
+          'fullName',
+          'phone',
+          'email',
+          'parentName',
+        ])
+      );
+    } else {
+      // If no search, show only latest 15 leads
+      filtered = leads
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+        .slice(0, 15);
+    }
+    
+    return filtered;
+  }, [leads, search]);
 
   const getStatusColor = (status: Lead['leadStatus']) => {
     switch (status) {
@@ -217,7 +231,9 @@ export default function Leads() {
       {/* Leads Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Leads ({filteredLeads.length})</CardTitle>
+          <CardTitle>
+            {search.trim() ? `Search Results (${filteredLeads.length})` : `Latest Leads (${filteredLeads.length})`}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -309,17 +325,12 @@ export default function Leads() {
                   </div>
                 </div>
 
-                {/* Lead History Preview */}
-                {lead.history.length > 1 && (
+                {/* Lead History Preview - Removed since history functionality was removed */}
+                {false && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <p className="text-sm font-medium mb-2">Recent Activity:</p>
                     <div className="text-sm text-muted-foreground">
-                      {lead.history.slice(-2).map((history) => (
-                        <div key={history.id} className="flex justify-between">
-                          <span>{history.action}: {history.details}</span>
-                          <span>{new Date(history.timestamp).toLocaleDateString()}</span>
-                        </div>
-                      ))}
+                      No recent activity available
                     </div>
                   </div>
                 )}
@@ -329,7 +340,12 @@ export default function Leads() {
 
           {filteredLeads.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No leads found matching your criteria.</p>
+              <p className="text-muted-foreground">
+                {search.trim() 
+                  ? "No leads found matching your search criteria." 
+                  : "No leads found in the database."
+                }
+              </p>
             </div>
           )}
         </CardContent>

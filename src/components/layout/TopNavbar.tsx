@@ -69,7 +69,7 @@ export function TopNavbar() {
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 mr-24">
         <Button variant="ghost" size="sm" onClick={toggleDarkMode} aria-label="Toggle dark mode" suppressHydrationWarning>
           {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </Button>
