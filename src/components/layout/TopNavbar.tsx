@@ -33,11 +33,14 @@ export function TopNavbar() {
   const router = useRouter();
   const pathname = usePathname();
   const hideSearch = Boolean(pathname && (pathname.startsWith('/reports') || pathname.startsWith('/tasks') || pathname.startsWith('/settings')));
-  async function loadNotifications() {
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  async function loadNotifications(p = page) {
     try {
-      const res = await fetch(`/api/notifications?ts=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/notifications?page=${p}&pageSize=${pageSize}&ts=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setNotifications((data.notifications || []) as AppNotification[]);
+      setPage(data.page || p);
     } catch {}
   }
   useEffect(() => {
@@ -115,7 +118,7 @@ export function TopNavbar() {
             <div className="absolute right-0 mt-2 w-80 bg-white border border-border rounded shadow-lg z-50 max-h-96 overflow-auto">
               <div className="p-3 font-bold border-b flex items-center justify-between">
                 <span>Notifications</span>
-                <button className="text-xs text-primary hover:underline" onClick={loadNotifications}>Refresh</button>
+                <button className="text-xs text-primary hover:underline" onClick={() => loadNotifications()}>Refresh</button>
               </div>
               {notifications.length === 0 ? (
                 <div className="p-4 text-muted-foreground text-center">No notifications</div>
@@ -138,6 +141,14 @@ export function TopNavbar() {
                     </div>
                   </div>
                 ))
+              )}
+              {notifications.length >= pageSize && (
+                <div className="p-2 text-center">
+                  <button
+                    className="text-sm text-primary hover:underline"
+                    onClick={async () => { const next = page + 1; await loadNotifications(next); }}
+                  >Read more</button>
+                </div>
               )}
             </div>
           )}

@@ -410,10 +410,13 @@ export async function createNotification(n: NewNotification) {
   return { id: (result as any).insertId };
 }
 
-export async function getNotifications(limit = 100) {
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 500));
-  // Some MySQL setups don't accept parameter binding in LIMIT; inline safe integer
-  const [rows] = await pool.execute(`SELECT * FROM notifications ORDER BY created_at DESC LIMIT ${safeLimit}`);
+export async function getNotifications(limit = 100, offset = 0) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 100));
+  const safeOffset = Math.max(0, Number(offset) || 0);
+  // Inline safe integers for LIMIT/OFFSET (some drivers don't bind LIMIT)
+  const [rows] = await pool.execute(
+    `SELECT * FROM notifications ORDER BY created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`
+  );
   return rows as any[];
 }
 

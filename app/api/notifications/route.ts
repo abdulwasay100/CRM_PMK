@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initializeDatabase, getNotifications, createNotification, markNotificationRead, scanLeadThresholdNotifications, scanDueSoonReminderNotifications } from '@/lib/database'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   await initializeDatabase()
-  const notifications = await getNotifications(100)
-  return NextResponse.json({ notifications })
+  const { searchParams } = new URL(req.url)
+  const page = Number(searchParams.get('page') || '1')
+  const pageSize = Math.max(1, Math.min(Number(searchParams.get('pageSize')) || 10, 10))
+  const offset = (Math.max(1, page) - 1) * pageSize
+  const notifications = await getNotifications(pageSize, offset)
+  return NextResponse.json({ notifications, page, pageSize })
 }
 
 export async function POST(req: NextRequest) {
