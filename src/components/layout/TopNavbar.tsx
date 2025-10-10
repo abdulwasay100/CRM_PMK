@@ -13,7 +13,7 @@ import {
 import { SearchContext } from "@/context/SearchContext";
 import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 // Minimal notification type for local state
 type AppNotification = {
@@ -27,6 +27,8 @@ export function TopNavbar() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const hideSearch = Boolean(pathname && (pathname.startsWith('/reports') || pathname.startsWith('/tasks') || pathname.startsWith('/settings')));
   useEffect(() => {
     // Notifications generation simplified. Campaigns and other heavy logic removed.
     setNotifications([]);
@@ -46,7 +48,7 @@ export function TopNavbar() {
     }
   };
   useEffect(() => {
-    function handleAdminNameUpdate(e) {
+    function handleAdminNameUpdate(e: any) {
       const { firstName, lastName } = e.detail || {};
       setAdminName(`${firstName || ''} ${lastName || ''}`.trim() || 'Admin User');
     }
@@ -58,15 +60,17 @@ export function TopNavbar() {
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <SidebarTrigger />
-        <div className="relative w-96 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search by name, phone, email, parent (comma separated)..."
-            className="pl-10 bg-muted/50 border-muted-foreground/20"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
+        {!hideSearch && (
+          <div className="relative w-96 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search by name, phone, email, parent (comma separated)..."
+              className="pl-10 bg-muted/50 border-muted-foreground/20"
+              value={search}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex items-center space-x-4 mr-24">

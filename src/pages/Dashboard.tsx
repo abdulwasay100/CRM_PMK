@@ -31,6 +31,7 @@ import {
   Legend
 } from "recharts";
 import React, { useEffect, useState } from "react";
+import { SearchContext } from "@/context/SearchContext";
 import { useRouter } from "next/navigation";
 
 const leadsBySource = [
@@ -92,10 +93,34 @@ export default function Dashboard() {
   // Data for charts now comes from API: leadsBySource, monthlyData
   const hasMonthlyData = monthlyData.some(d => d.leads > 0 || d.conversions > 0);
 
-  // Recent leads - show latest 15 from database
-  const recentLeads = [...leads]
-    .sort((a, b) => (b.created_at || b.createdAt || '').localeCompare(a.created_at || a.createdAt || ''))
-    .slice(0, 15);
+  // DB search for dashboard (no localStorage)
+  const { search } = React.useContext(SearchContext);
+  const normalizedQuery = (search || '').trim().toLowerCase();
+  const allLeadsSorted = React.useMemo(() => (
+    [...leads].sort((a, b) => (b.created_at || b.createdAt || '').localeCompare(a.created_at || a.createdAt || ''))
+  ), [leads]);
+  const searchMatches = React.useMemo(() => {
+    if (!normalizedQuery) return allLeadsSorted;
+    const qDigits = normalizedQuery.replace(/\D/g, '');
+    return allLeadsSorted.filter((l: any) => {
+      const name = (l.full_name || l.fullName || '').toLowerCase();
+      const parent = (l.parent_name || l.parentName || '').toLowerCase();
+      const email = (l.email || '').toLowerCase();
+      const city = (l.city || '').toLowerCase();
+      const course = (l.interested_course || l.interestedCourse || '').toLowerCase();
+      const phoneDigits = String(l.phone || '').replace(/\D/g, '');
+      return (
+        name.includes(normalizedQuery) ||
+        parent.includes(normalizedQuery) ||
+        email.includes(normalizedQuery) ||
+        city.includes(normalizedQuery) ||
+        course.includes(normalizedQuery) ||
+        (qDigits && phoneDigits.includes(qDigits))
+      );
+    });
+  }, [allLeadsSorted, normalizedQuery]);
+  const isSearching = Boolean(normalizedQuery);
+  const recentLeads = isSearching ? searchMatches : allLeadsSorted.slice(0, 15);
   const recentLeadsCounts = React.useMemo(() => {
     const getStatus = (l: any) => (l.lead_status || l.leadStatus) as 'New' | 'Contacted' | 'Converted' | 'Not Interested' | undefined;
     const counts = { all: recentLeads.length, New: 0, Contacted: 0, Converted: 0, 'Not Interested': 0 } as Record<string, number>;
@@ -248,7 +273,7 @@ export default function Dashboard() {
         {/* Recent Leads */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Leads ({filteredRecentLeads.length})</CardTitle>
+            <CardTitle>{isSearching ? `Search Results (${recentLeads.length})` : `Recent Leads (${recentLeads.length})`}</CardTitle>
             <div className="flex gap-2 mt-2 flex-wrap">
               <Button
                 variant={activeRecentLeadsStatus === 'all' ? 'default' : 'outline'}
@@ -334,7 +359,7 @@ export default function Dashboard() {
                 </div>
               ))}
               {recentLeads.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">No recent leads found</div>
+                <div className="text-center text-muted-foreground py-8">{isSearching ? 'No leads match your search' : 'No recent leads found'}</div>
               )}
             </div>
           </CardContent>
