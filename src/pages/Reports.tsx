@@ -35,6 +35,7 @@ async function fetchLeadsFromDB() {
     leadStatus: l.lead_status,
     inquirySource: l.inquiry_source,
     country: l.country,
+    city: l.city,
   }));
 }
 
@@ -136,32 +137,73 @@ export default function Reports() {
     URL.revokeObjectURL(url)
   }
 
+  const getDateRangeForPeriod = () => {
+    const now = new Date()
+    const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const startOfYear = new Date(now.getFullYear(), 0, 1)
+    const sevenDaysAgo = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6))
+    const start = period === 'daily' ? sevenDaysAgo : period === 'weekly' ? startOfMonth : period === 'monthly' ? startOfYear : new Date(0)
+    const end = now
+    return { start, end }
+  }
+
+  const getFilteredForExport = () => {
+    const { start } = getDateRangeForPeriod()
+    if (!start) return leads
+    return leads.filter((l: any) => l.createdAt && new Date(l.createdAt) >= start)
+  }
+
   const downloadExcel = () => {
-    const headers = [
-      'Full Name','Parent Name','Course','Age','City','Phone','Email','Lead Status','Source','Created At','Notes'
+    const exportRows = getFilteredForExport()
+    const { start, end } = getDateRangeForPeriod()
+    const headerInfo = [
+      ['CRM PMK - Leads Report'],
+      [`Period: ${period.toUpperCase()}`],
+      [`Range: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`],
+      [`Generated At: ${new Date().toLocaleString()}`],
+      [''],
     ]
-    const rows = leads.map((l: any) => [
+    const headers = [
+      'S#','Full Name','Parent Name','Course','Status','Source','City','Country','Age','Phone','Email','Created At','Notes'
+    ]
+    const rows = exportRows.map((l: any, idx: number) => [
+      idx + 1,
       l.fullName || '',
       l.parentName || '',
       l.interestedCourse || '',
-      l.age ?? '',
-      l.city || '',
-      l.phone || '',
-      l.email || '',
       l.leadStatus || '',
       l.inquirySource || '',
+      l.city || '',
+      l.country || '',
+      l.age ?? '',
+      l.phone || '',
+      l.email || '',
       l.createdAt ? new Date(l.createdAt).toLocaleString() : '',
       (l.notes || '').replace(/\n/g, ' ')
     ])
-    const csv = [headers, ...rows]
-      .map(r => r.map(v => (`"${String(v).replace(/"/g,'""')}"`)).join(','))
+    const totals = {
+      leads: exportRows.length,
+      converted: exportRows.filter((l: any) => l.leadStatus === 'Converted').length,
+    }
+    const summary = [
+      [''],
+      ['Summary'],
+      ['Total Leads', totals.leads],
+      ['Converted', totals.converted],
+      ['Conversion Rate', totals.leads ? ((totals.converted / totals.leads) * 100).toFixed(1) + '%' : '0.0%'],
+    ]
+    const csv = [...headerInfo, headers, ...rows, ...summary]
+      .map(r => r.map(v => (`"${String(v ?? '').replace(/"/g,'""')}"`)).join(','))
       .join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
-    triggerDownload(blob, `crm-reports-${ts}.csv`)
+    triggerDownload(blob, `crm-report-${period}-${ts}.csv`)
   }
 
   const downloadPDF = async () => {
+    const exportRows = getFilteredForExport()
+    const { start, end } = getDateRangeForPeriod()
     const pdfDoc = await PDFDocument.create()
     const page = pdfDoc.addPage([595.28, 841.89]) // A4
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
@@ -172,30 +214,59 @@ export default function Reports() {
       y -= size + 6
     }
     // Header
-    drawText('CRM PMK - Reports Summary', 18, true)
-    drawText(new Date().toLocaleString(), 10)
+    drawText("Polymath kids' CRM system Powered by PolyNext", 14, true)
+    drawText('Leads Report', 18, true)
+    drawText(`Period: ${period.toUpperCase()}  |  Range: ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`, 10)
+    drawText(`Generated: ${new Date().toLocaleString()}`, 10)
     y -= 6
     // Key metrics
-    const totalLeads = leads.length
-    const converted = leads.filter((l: any) => l.leadStatus === 'Converted').length
-    const contacted = leads.filter((l: any) => l.leadStatus === 'Contacted').length
-    const notInterested = leads.filter((l: any) => l.leadStatus === 'Not Interested').length
+    const totalLeads = exportRows.length
+    const converted = exportRows.filter((l: any) => l.leadStatus === 'Converted').length
+    const contacted = exportRows.filter((l: any) => l.leadStatus === 'Contacted').length
+    const notInterested = exportRows.filter((l: any) => l.leadStatus === 'Not Interested').length
     const conversionRate = totalLeads ? ((converted/totalLeads)*100).toFixed(1) : '0.0'
     drawText(`Total Leads: ${totalLeads}`, 12, true)
     drawText(`Converted: ${converted}  |  Contacted: ${contacted}  |  Not Interested: ${notInterested}`)
     drawText(`Conversion Rate: ${conversionRate}%`)
     y -= 6
-    drawText('Recent Leads (up to 20):', 12, true)
-    leads.slice(-20).reverse().forEach((l: any, idx: number) => {
-      const line = `${idx+1}. ${l.fullName || ''}  |  ${l.interestedCourse || ''}  |  ${l.city || ''}  |  ${l.leadStatus || ''}`
+    // Table header
+    const columns = [
+      { key: 's', label: '#', width: 20 },
+      { key: 'name', label: 'Name', width: 140 },
+      { key: 'course', label: 'Course', width: 90 },
+      { key: 'status', label: 'Status', width: 70 },
+      { key: 'source', label: 'Source', width: 80 },
+      { key: 'city', label: 'City', width: 70 },
+      { key: 'created', label: 'Created', width: 90 },
+    ] as const
+    const drawRow = (vals: string[], isHeader = false) => {
+      const x0 = 40
+      let x = x0
+      const h = isHeader ? 16 : 14
       if (y < 60) { y = 780; pdfDoc.addPage(); }
-      page.drawText(line, { x: 50, y, size: 10, font })
-      y -= 14
+      vals.forEach((v, i) => {
+        page.drawText(v, { x, y: y - 10, size: isHeader ? 10 : 9, font: isHeader ? fontBold : font })
+        x += columns[i].width
+      })
+      y -= h
+    }
+    drawText('Leads (up to 200):', 12, true)
+    drawRow(columns.map(c => c.label), true)
+    exportRows.slice(-200).reverse().forEach((l: any, idx: number) => {
+      drawRow([
+        String(idx + 1),
+        l.fullName || '',
+        l.interestedCourse || '',
+        l.leadStatus || '',
+        l.inquirySource || '',
+        l.city || '-',
+        l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '',
+      ])
     })
     const pdfBytes = await pdfDoc.save()
     const blob = new Blob([pdfBytes], { type: 'application/pdf' })
     const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
-    triggerDownload(blob, `crm-report-${ts}.pdf`)
+    triggerDownload(blob, `crm-report-${period}-${ts}.pdf`)
   }
 
   const chartColors = [
