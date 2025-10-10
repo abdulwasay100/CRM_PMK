@@ -41,9 +41,21 @@ export async function GET() {
 
   const recentLeads = [...leads]
     .sort((a: any, b: any) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
-    .slice(0, 3)
+    .slice(0, 15)
 
-  const pendingTasks = reminders.filter((r: any) => r.status === 'Pending').slice(0, 3)
+  // Get all not completed reminders (Pending + In Progress)
+  const notCompletedTasks = reminders.filter((r: any) => r.status === 'Pending' || r.status === 'In Progress')
+  
+  // Get completed reminders sorted by latest first
+  const completedTasks = reminders.filter((r: any) => r.status === 'Completed')
+    .sort((a: any, b: any) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
+  
+  // If not completed < 15, add latest completed to make total 15
+  let pendingTasks = [...notCompletedTasks]
+  if (notCompletedTasks.length < 15) {
+    const needed = 15 - notCompletedTasks.length
+    pendingTasks = [...notCompletedTasks, ...completedTasks.slice(0, needed)]
+  }
 
   return NextResponse.json({
     totals: { totalLeads, newLeadsToday, contacted, converted, notInterested, conversionRate },
@@ -51,6 +63,11 @@ export async function GET() {
     monthly,
     recentLeads,
     pendingTasks,
+    reminderCategories: {
+      pending: reminders.filter((r: any) => r.status === 'Pending'),
+      inProgress: reminders.filter((r: any) => r.status === 'In Progress'),
+      completed: completedTasks.slice(0, 15) // Latest 15 completed
+    }
   })
 }
 

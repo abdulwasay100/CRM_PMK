@@ -63,6 +63,10 @@ export default function Dashboard() {
   const [{ totalLeads, newLeadsToday, conversionRate }, setTotals] = React.useState({ totalLeads: 0, newLeadsToday: 0, conversionRate: 0 });
   const [leadsBySource, setLeadsBySourceState] = React.useState<any[]>([]);
   const [monthlyData, setMonthlyDataState] = React.useState<any[]>([]);
+  // Recent leads status filter
+  const [activeRecentLeadsStatus, setActiveRecentLeadsStatus] = React.useState<'all' | 'New' | 'Contacted' | 'Converted' | 'Not Interested'>('all');
+  const [reminderCategories, setReminderCategories] = React.useState<any>({});
+  const [activeReminderSection, setActiveReminderSection] = React.useState<'default' | 'pending' | 'inProgress' | 'completed'>('default');
   const navigate = useRouter();
   React.useEffect(() => {
     setMounted(true);
@@ -78,6 +82,7 @@ export default function Dashboard() {
         });
         setMonthlyDataState(data.monthly || []);
         setLeadsBySourceState(data.leadsBySource || []);
+        setReminderCategories(data.reminderCategories || {});
       } catch {}
     })();
   }, []);
@@ -87,8 +92,23 @@ export default function Dashboard() {
   // Data for charts now comes from API: leadsBySource, monthlyData
   const hasMonthlyData = monthlyData.some(d => d.leads > 0 || d.conversions > 0);
 
-  // Recent leads - show latest 10 instead of 3
-  const recentLeads = [...leads].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')).slice(0, 10);
+  // Recent leads - show latest 15 from database
+  const recentLeads = [...leads]
+    .sort((a, b) => (b.created_at || b.createdAt || '').localeCompare(a.created_at || a.createdAt || ''))
+    .slice(0, 15);
+  const recentLeadsCounts = React.useMemo(() => {
+    const getStatus = (l: any) => (l.lead_status || l.leadStatus) as 'New' | 'Contacted' | 'Converted' | 'Not Interested' | undefined;
+    const counts = { all: recentLeads.length, New: 0, Contacted: 0, Converted: 0, 'Not Interested': 0 } as Record<string, number>;
+    recentLeads.forEach((l: any) => {
+      const s = getStatus(l);
+      if (s && counts[s] !== undefined) counts[s] += 1;
+    });
+    return counts;
+  }, [recentLeads]);
+  const filteredRecentLeads = React.useMemo(() => {
+    if (activeRecentLeadsStatus === 'all') return recentLeads;
+    return recentLeads.filter((l: any) => (l.lead_status || l.leadStatus) === activeRecentLeadsStatus);
+  }, [recentLeads, activeRecentLeadsStatus]);
   const pendingTasks = reminders.filter(task => task.status === "Pending").slice(0, 3);
 
   // After leadsBySource is defined, calculate total leads and add percentage to each source
@@ -151,9 +171,6 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{conversionRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              ₹0 revenue
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -231,24 +248,61 @@ export default function Dashboard() {
         {/* Recent Leads */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Leads ({recentLeads.length})</CardTitle>
+            <CardTitle>Recent Leads ({filteredRecentLeads.length})</CardTitle>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              <Button
+                variant={activeRecentLeadsStatus === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveRecentLeadsStatus('all')}
+              >
+                All ({recentLeadsCounts.all})
+              </Button>
+              <Button
+                variant={activeRecentLeadsStatus === 'New' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveRecentLeadsStatus('New')}
+              >
+                New ({recentLeadsCounts['New'] || 0})
+              </Button>
+              <Button
+                variant={activeRecentLeadsStatus === 'Contacted' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveRecentLeadsStatus('Contacted')}
+              >
+                Contacted ({recentLeadsCounts['Contacted'] || 0})
+              </Button>
+              <Button
+                variant={activeRecentLeadsStatus === 'Converted' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveRecentLeadsStatus('Converted')}
+              >
+                Converted ({recentLeadsCounts['Converted'] || 0})
+              </Button>
+              <Button
+                variant={activeRecentLeadsStatus === 'Not Interested' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveRecentLeadsStatus('Not Interested')}
+              >
+                Not Interested ({recentLeadsCounts['Not Interested'] || 0})
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {recentLeads.map((lead) => (
+              {filteredRecentLeads.map((lead: any) => (
                 <div key={lead.id} className="p-3 bg-muted/50 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <p className="font-medium text-base">{lead.fullName}</p>
-                      <p className="text-sm text-muted-foreground">{lead.parentName && `Parent: ${lead.parentName}`}</p>
+                      <p className="font-medium text-base">{lead.full_name || lead.fullName}</p>
+                      <p className="text-sm text-muted-foreground">{(lead.parent_name || lead.parentName) && `Parent: ${lead.parent_name || lead.parentName}`}</p>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      lead.leadStatus === 'New' ? 'bg-primary-light text-primary' :
-                      lead.leadStatus === 'Contacted' ? 'bg-warning-light text-warning' :
-                      lead.leadStatus === 'Converted' ? 'bg-success-light text-success' :
+                      (lead.lead_status || lead.leadStatus) === 'New' ? 'bg-primary-light text-primary' :
+                      (lead.lead_status || lead.leadStatus) === 'Contacted' ? 'bg-warning-light text-warning' :
+                      (lead.lead_status || lead.leadStatus) === 'Converted' ? 'bg-success-light text-success' :
                       'bg-destructive-light text-destructive'
                     }`}>
-                      {lead.leadStatus}
+                      {lead.lead_status || lead.leadStatus}
                     </span>
                   </div>
                   
@@ -263,7 +317,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-1">
                       <GraduationCap className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-muted-foreground">{lead.interestedCourse}</span>
+                      <span className="text-muted-foreground">{lead.interested_course || lead.interestedCourse || 'Not specified'}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-muted-foreground" />
@@ -273,7 +327,7 @@ export default function Dashboard() {
                   
                   <div className="mt-2 pt-2 border-t border-border">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Created: {new Date(lead.createdAt).toLocaleDateString()}</span>
+                      <span>Created: {new Date(lead.created_at || lead.createdAt).toLocaleDateString()}</span>
                       <span>Age: {lead.age || 'N/A'}</span>
                     </div>
                   </div>
@@ -286,48 +340,117 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Pending Reminders */}
+        {/* Reminders Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Pending Reminders</CardTitle>
+            <CardTitle>Reminders</CardTitle>
+            <div className="flex gap-2 mt-2">
+              <Button 
+                variant={activeReminderSection === 'default' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setActiveReminderSection('default')}
+              >
+                All ({reminders.length})
+              </Button>
+              <Button 
+                variant={activeReminderSection === 'pending' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setActiveReminderSection('pending')}
+              >
+                Pending ({reminderCategories.pending?.length || 0})
+              </Button>
+              <Button 
+                variant={activeReminderSection === 'inProgress' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setActiveReminderSection('inProgress')}
+              >
+                In Progress ({reminderCategories.inProgress?.length || 0})
+              </Button>
+              <Button 
+                variant={activeReminderSection === 'completed' ? 'default' : 'outline'} 
+                size="sm"
+                onClick={() => setActiveReminderSection('completed')}
+              >
+                Completed ({reminderCategories.completed?.length || 0})
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {pendingTasks.map((task) => (
-                <div key={task.id} className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="font-medium text-base">{task.leadName}</p>
-                      <p className="text-sm text-muted-foreground">{task.type}</p>
-                    </div>
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning-light text-warning">
-                      {task.status}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-1 text-sm">
-                    {task.notes && (
-                      <div className="flex items-start gap-1">
-                        <Clock className="w-3 h-3 text-muted-foreground mt-0.5" />
-                        <span className="text-muted-foreground">{task.notes}</span>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {(() => {
+                let displayTasks = [];
+                switch (activeReminderSection) {
+                  case 'pending':
+                    displayTasks = reminderCategories.pending || [];
+                    break;
+                  case 'inProgress':
+                    displayTasks = reminderCategories.inProgress || [];
+                    break;
+                  case 'completed':
+                    displayTasks = reminderCategories.completed || [];
+                    break;
+                  default:
+                    displayTasks = reminders;
+                }
+                
+                return displayTasks.map((task: any) => (
+                  <div key={task.id} className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="font-medium text-base">{task.lead_name || task.leadName}</p>
+                        <p className="text-sm text-muted-foreground">Type: {task.type}</p>
                       </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Target className="w-3 h-3 text-muted-foreground" />
-                      <span className="text-muted-foreground">Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        task.status === 'Pending' ? 'bg-warning-light text-warning' :
+                        task.status === 'In Progress' ? 'bg-primary-light text-primary' :
+                        'bg-success-light text-success'
+                      }`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-1 text-sm">
+                      {task.notes && (
+                        <div className="flex items-start gap-1">
+                          <Clock className="w-3 h-3 text-muted-foreground mt-0.5" />
+                          <span className="text-muted-foreground">{task.notes}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Target className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-muted-foreground">Due: {new Date(task.due_date || task.dueDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2 pt-2 border-t border-border">
+                      <div className="text-xs text-muted-foreground">
+                        Created: {new Date(task.created_at || task.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="mt-2 pt-2 border-t border-border">
-                    <div className="text-xs text-muted-foreground">
-                      Created: {new Date(task.createdAt).toLocaleDateString()}
-                    </div>
+                ));
+              })()}
+              {(() => {
+                let displayTasks = [];
+                switch (activeReminderSection) {
+                  case 'pending':
+                    displayTasks = reminderCategories.pending || [];
+                    break;
+                  case 'inProgress':
+                    displayTasks = reminderCategories.inProgress || [];
+                    break;
+                  case 'completed':
+                    displayTasks = reminderCategories.completed || [];
+                    break;
+                  default:
+                    displayTasks = reminders;
+                }
+                return displayTasks.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    No {activeReminderSection === 'default' ? '' : activeReminderSection} reminders found
                   </div>
-                </div>
-              ))}
-              {pendingTasks.length === 0 && (
-                <div className="text-center text-muted-foreground">No pending reminders</div>
-              )}
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
