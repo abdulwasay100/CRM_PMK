@@ -127,6 +127,21 @@ export async function initializeDatabase() {
     `);
     console.log('✅ Notifications table created');
 
+    // Create lead_groups table
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS lead_groups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        group_type ENUM('Age', 'Course', 'City', 'Admission Status') NOT NULL,
+        criteria VARCHAR(255) NOT NULL,
+        lead_ids JSON NOT NULL,
+        lead_count INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Lead groups table created');
+
     // Insert default admin user if not exists
     const [existingAdmin] = await pool.execute(
       'SELECT id FROM users WHERE username = ?',
@@ -489,4 +504,237 @@ export async function scanDueSoonReminderNotifications() {
 export async function getReminderById(id: number) {
   const [rows] = await pool.execute('SELECT * FROM reminders WHERE id = ?', [id]);
   return (rows as any[])[0] || null;
+}
+
+// ---------------- Groups helpers ----------------
+export type GroupType = 'Age' | 'Course' | 'City' | 'Admission Status';
+
+export type NewGroup = {
+  name: string;
+  group_type: GroupType;
+  criteria: string;
+  lead_ids: number[];
+};
+
+export type Group = {
+  id: number;
+  name: string;
+  group_type: GroupType;
+  criteria: string;
+  lead_ids: number[];
+  lead_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function createGroup(group: NewGroup) {
+  const [result] = await pool.execute(
+    'INSERT INTO lead_groups (name, group_type, criteria, lead_ids, lead_count) VALUES (?, ?, ?, ?, ?)',
+    [group.name, group.group_type, group.criteria, JSON.stringify(group.lead_ids), group.lead_ids.length]
+  );
+  return { id: (result as any).insertId };
+}
+
+export async function getAllGroups() {
+  const [rows] = await pool.execute('SELECT * FROM lead_groups ORDER BY created_at DESC');
+  return rows as Group[];
+}
+
+export async function getGroupById(id: number) {
+  const [rows] = await pool.execute('SELECT * FROM lead_groups WHERE id = ?', [id]);
+  return (rows as any[])[0] || null;
+}
+
+export async function updateGroup(id: number, group: Partial<NewGroup>) {
+  const updates = [];
+  const values = [];
+  
+  if (group.name !== undefined) {
+    updates.push('name = ?');
+    values.push(group.name);
+  }
+  if (group.group_type !== undefined) {
+    updates.push('group_type = ?');
+    values.push(group.group_type);
+  }
+  if (group.criteria !== undefined) {
+    updates.push('criteria = ?');
+    values.push(group.criteria);
+  }
+  if (group.lead_ids !== undefined) {
+    updates.push('lead_ids = ?');
+    updates.push('lead_count = ?');
+    values.push(JSON.stringify(group.lead_ids));
+    values.push(group.lead_ids.length);
+  }
+  
+  if (updates.length === 0) return { affectedRows: 0 };
+  
+  values.push(id);
+  const [result] = await pool.execute(
+    `UPDATE lead_groups SET ${updates.join(', ')} WHERE id = ?`,
+    values
+  );
+  return { affectedRows: (result as any).affectedRows };
+}
+
+export async function deleteGroup(id: number) {
+  const [result] = await pool.execute('DELETE FROM lead_groups WHERE id = ?', [id]);
+  return { affectedRows: (result as any).affectedRows };
+}
+
+// Auto-create groups based on existing lead data
+export async function autoCreateGroupsFromLeads() {
+  const [leads] = await pool.execute('SELECT * FROM leads');
+  const [existingGroups] = await pool.execute('SELECT * FROM lead_groups');
+  
+  const existingGroupKeys = new Set(
+    (existingGroups as Group[]).map(g => `${g.group_type}:${g.criteria}`)
+  );
+  
+  const newGroups: { group_type: GroupType; criteria: string; name: string }[] = [];
+  
+  // Predefined age ranges
+  const ageRanges = [
+    { range: '6-8', min: 6, max: 8 },
+    { range: '9-12', min: 9, max: 12 },
+    { range: '13-16', min: 13, max: 16 }
+  ];
+  
+  // Create age groups based on predefined ranges
+  for (const ageRange of ageRanges) {
+    const ageKey = `Age:${ageRange.range}`;
+    if (!existingGroupKeys.has(ageKey)) {
+      // Check if any leads fall in this age range
+      const hasLeadsInRange = (leads as any[]).some(lead => 
+        lead.age && lead.age >= ageRange.min && lead.age <= ageRange.max
+      );
+      
+      if (hasLeadsInRange) {
+        newGroups.push({
+          group_type: 'Age',
+          criteria: ageRange.range,
+          name: `Age ${ageRange.range}`
+        });
+        existingGroupKeys.add(ageKey);
+      }
+    }
+  }
+  
+  for (const lead of leads as any[]) {
+    // Create Course group
+    if (lead.interested_course) {
+      const courseKey = `Course:${lead.interested_course}`;
+      if (!existingGroupKeys.has(courseKey)) {
+        newGroups.push({
+          group_type: 'Course',
+          criteria: lead.interested_course,
+          name: `${lead.interested_course} Course`
+        });
+        existingGroupKeys.add(courseKey);
+      }
+    }
+    
+    // Create City group
+    if (lead.city) {
+      const cityKey = `City:${lead.city}`;
+      if (!existingGroupKeys.has(cityKey)) {
+        newGroups.push({
+          group_type: 'City',
+          criteria: lead.city,
+          name: `${lead.city} Leads`
+        });
+        existingGroupKeys.add(cityKey);
+      }
+    }
+    
+    // Create Admission Status group
+    if (lead.lead_status) {
+      const statusKey = `Admission Status:${lead.lead_status}`;
+      if (!existingGroupKeys.has(statusKey)) {
+        newGroups.push({
+          group_type: 'Admission Status',
+          criteria: lead.lead_status,
+          name: `${lead.lead_status} Status`
+        });
+        existingGroupKeys.add(statusKey);
+      }
+    }
+  }
+  
+  // Create new groups
+  for (const groupData of newGroups) {
+    await pool.execute(
+      'INSERT INTO lead_groups (name, group_type, criteria, lead_ids, lead_count) VALUES (?, ?, ?, ?, ?)',
+      [groupData.name, groupData.group_type, groupData.criteria, JSON.stringify([]), 0]
+    );
+  }
+  
+  return newGroups.length;
+}
+
+// Auto-assign leads to groups based on criteria
+export async function autoAssignLeadsToGroups() {
+  const [leads] = await pool.execute('SELECT * FROM leads');
+  const [groups] = await pool.execute('SELECT * FROM lead_groups');
+  
+  for (const group of groups as Group[]) {
+    const matchingLeadIds: number[] = [];
+    
+    for (const lead of leads as any[]) {
+      let matches = false;
+      
+      switch (group.group_type) {
+        case 'Age':
+          if (lead.age && group.criteria) {
+            // Handle age ranges like "6-8", "9-12", "13-16", etc.
+            if (group.criteria.includes('-')) {
+              const [minAge, maxAge] = group.criteria.split('-').map(Number);
+              if (lead.age >= minAge && lead.age <= maxAge) {
+                matches = true;
+              }
+            } else if (group.criteria.includes('+')) {
+              // Handle "41+" range
+              const minAge = parseInt(group.criteria.replace('+', ''));
+              if (lead.age >= minAge) {
+                matches = true;
+              }
+            } else {
+              // Single age match (fallback)
+              if (lead.age.toString() === group.criteria) {
+                matches = true;
+              }
+            }
+          }
+          break;
+        case 'Course':
+          if (lead.interested_course && lead.interested_course === group.criteria) {
+            matches = true;
+          }
+          break;
+        case 'City':
+          if (lead.city && lead.city === group.criteria) {
+            matches = true;
+          }
+          break;
+        case 'Admission Status':
+          if (lead.lead_status && lead.lead_status === group.criteria) {
+            matches = true;
+          }
+          break;
+      }
+      
+      if (matches) {
+        matchingLeadIds.push(lead.id);
+      }
+    }
+    
+    // Update group with matching lead IDs
+    if (matchingLeadIds.length > 0) {
+      await pool.execute(
+        'UPDATE lead_groups SET lead_ids = ?, lead_count = ? WHERE id = ?',
+        [JSON.stringify(matchingLeadIds), matchingLeadIds.length, group.id]
+      );
+    }
+  }
 }

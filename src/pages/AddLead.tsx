@@ -260,8 +260,19 @@ export default function AddLead() {
     let age = 0;
     if (data.dob) {
       age = calculateAgeFromDOB(data.dob);
+      if (age < 6 || age > 16) {
+        toast.error("Age must be between 6 and 16 years");
+        return;
+      }
     } else if (data.age) {
       age = data.age;
+      if (age < 6 || age > 16) {
+        toast.error("Age must be between 6 and 16 years");
+        return;
+      }
+    } else {
+      toast.error("Please provide either age or date of birth");
+      return;
     }
     // Save lead in DB
     const leadPayload = {
@@ -577,6 +588,9 @@ export default function AddLead() {
                     placeholder="Select date of birth"
                     className="w-[85%] text-lg"
                   />
+                  {watchedDOB && (calculateAgeFromDOB(watchedDOB) < 6 || calculateAgeFromDOB(watchedDOB) > 16) && (
+                    <p className="text-sm text-destructive mt-1">Age must be between 6 and 16 years</p>
+                  )}
                   {watchedDOB ? (
                     <div className="mt-2">
                       <label>Calculated Age</label>
@@ -590,8 +604,8 @@ export default function AddLead() {
                         type="number"
                         {...register("age", { 
                           required: "Age is required if DOB is not provided",
-                          min: { value: 3, message: "Age must be at least 3" },
-                          max: { value: 18, message: "Age must be at most 18" }
+                          min: { value: 6, message: "Age must be at least 6" },
+                          max: { value: 16, message: "Age must be at most 16" }
                         })}
                         placeholder="Enter age"
                         className="w-[85%] text-lg"

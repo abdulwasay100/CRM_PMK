@@ -413,7 +413,7 @@ export default function Leads() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Age</label>
-                  <Input name="age" type="number" className="w-full" defaultValue={modal.lead.age} disabled={modal.mode === 'view'} required min={3} max={18} />
+                  <Input name="age" type="number" className="w-full" defaultValue={modal.lead.age} disabled={modal.mode === 'view'} required min={6} max={16} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Parent Name</label>

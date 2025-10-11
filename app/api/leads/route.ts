@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase, createLead, getLeads, convertLead } from '@/lib/database'
+import { initializeDatabase, createLead, getLeads, convertLead, autoAssignLeadsToGroups, autoCreateGroupsFromLeads } from '@/lib/database'
 
 export async function GET() {
   await initializeDatabase()
@@ -21,6 +21,13 @@ export async function POST(req: NextRequest) {
         await convertLead(Number(result.id))
       }
     } catch {}
+    
+    // Auto-create groups based on new lead data and assign leads
+    try {
+      await autoCreateGroupsFromLeads()
+      await autoAssignLeadsToGroups()
+    } catch {}
+    
     return NextResponse.json({ id: result.id }, { status: 201 })
   } catch (e) {
     return NextResponse.json({ error: 'Failed to create lead' }, { status: 500 })

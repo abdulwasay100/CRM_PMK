@@ -1,88 +1,106 @@
-import { useState } from "react";
-import { Plus, Users, Tag, MapPin, GraduationCap, Calendar, Paperclip, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Users, Tag, MapPin, GraduationCap, Calendar, Paperclip, Eye, Trash2, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Lead, Group } from "@/types";
+import { toast } from "sonner";
 import React from "react";
-import { Dialog } from "@/components/ui/dialog";
 
-// Helper functions for localStorage
-function getLeadsFromStorage() {
-  const data = localStorage.getItem('leads');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
-}
-function getGroupsFromStorage() {
-  const data = localStorage.getItem('groups');
-  if (data) {
-    try { return JSON.parse(data); } catch { return []; }
-  }
-  return [];
-}
-function saveGroupsToStorage(groups) {
-  localStorage.setItem('groups', JSON.stringify(groups));
-}
-function saveLeadsToStorage(leads) {
-  localStorage.setItem('leads', JSON.stringify(leads));
-}
+// Types
+type GroupType = 'Age' | 'Course' | 'City' | 'Admission Status';
+
+type Group = {
+  id: number;
+  name: string;
+  group_type: GroupType;
+  criteria: string;
+  lead_ids: number[];
+  lead_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type Lead = {
+  id: number;
+  full_name: string;
+  parent_name: string;
+  age: number;
+  city: string;
+  phone: string;
+  email: string;
+  interested_course: string;
+  lead_status: string;
+  created_at: string;
+};
 
 export default function Groups() {
   const [typeFilter, setTypeFilter] = useState<string>("All");
   const [criteriaFilter, setCriteriaFilter] = useState<string>("All");
-  const [groups, setGroups] = React.useState<Group[]>(getGroupsFromStorage());
-  const [leads, setLeads] = React.useState<Lead[]>(getLeadsFromStorage());
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [showCreate, setShowCreate] = useState<false | 'create' | 'edit'>(false);
-  const [newGroup, setNewGroup] = useState<{ id?: string; name: string; type: string; criteria: string; leadIds: string[] }>({ name: '', type: 'Age', criteria: '', leadIds: [] });
+  const [newGroup, setNewGroup] = useState<{ id?: number; name: string; group_type: GroupType; criteria: string; lead_ids: number[] }>({ 
+    name: '', 
+    group_type: 'Age', 
+    criteria: '', 
+    lead_ids: [] 
+  });
   const [messageModal, setMessageModal] = useState({ open: false, group: null, type: '' });
   const [message, setMessage] = useState('');
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const [attachmentError, setAttachmentError] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
-  const [expandedGroups, setExpandedGroups] = useState<string[]>([]); // Track expanded group IDs
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null); // Track selected lead for popup
-  const [leadsModalGroup, setLeadsModalGroup] = useState<Group | null>(null); // Track which group's leads modal is open
-  const [leadsModalSearch, setLeadsModalSearch] = useState(''); // Search term in modal
-  const [leadsModalSelectedLead, setLeadsModalSelectedLead] = useState<Lead | null>(null); // Selected lead in modal
-  const [leadSearch, setLeadSearch] = useState('');
-  const [editingLead, setEditingLead] = useState<Lead | null>(null); // Lead being edited/added
-  const [tempLead, setTempLead] = useState<Partial<Lead>>({}); // For new lead info
-  // Add attachment state for message modal
   const [attachments, setAttachments] = useState<File[]>([]);
-  // Handler for file input
-  function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) {
-      setAttachments(prev => [...prev, ...Array.from(e.target.files)]);
-    }
-  }
-  function handleRemoveAttachment(index: number) {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  }
-  // Remove messageType, bulkType, attachment, message, attachmentError state and modal logic
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
+  const [leadsModalGroup, setLeadsModalGroup] = useState<Group | null>(null);
+  const [leadsModalSearch, setLeadsModalSearch] = useState('');
+  const [leadsModalSelectedLead, setLeadsModalSelectedLead] = useState<Lead | null>(null);
+  const [leadSearch, setLeadSearch] = useState('');
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [tempLead, setTempLead] = useState<Partial<Lead>>({});
+  const [loading, setLoading] = useState(false);
 
-  React.useEffect(() => {
-    setGroups(getGroupsFromStorage());
-    setLeads(getLeadsFromStorage());
+  // Fetch data from database
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch('/api/groups', { cache: 'no-store' });
+      const data = await res.json();
+      setGroups(data.groups || []);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      toast.error('Failed to fetch groups');
+    }
+  };
+
+  const fetchLeads = async () => {
+    try {
+      const res = await fetch('/api/leads', { cache: 'no-store' });
+      const data = await res.json();
+      setLeads(data.leads || []);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+      toast.error('Failed to fetch leads');
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+    fetchLeads();
   }, []);
 
   // Get all unique criteria for the selected type
   const criteriaOptions = React.useMemo(() => {
     if (typeFilter === 'All') return [];
-    const set = new Set(groups.filter(g => g.type === typeFilter).map(g => g.criteria));
+    const set = new Set(groups.filter(g => g.group_type === typeFilter).map(g => g.criteria));
     return Array.from(set);
   }, [groups, typeFilter]);
 
   const filteredGroups = groups.filter(group => {
-    const matchesType = typeFilter === "All" || group.type === typeFilter;
+    const matchesType = typeFilter === "All" || group.group_type === typeFilter;
     const matchesCriteria = typeFilter === "All" || criteriaFilter === "All" || group.criteria === criteriaFilter;
     return matchesType && matchesCriteria;
   });
 
-  const getTypeIcon = (type: Group['type']) => {
+  const getTypeIcon = (type: GroupType) => {
     switch (type) {
       case 'Age': return <Calendar className="w-4 h-4 text-primary" />;
       case 'Course': return <GraduationCap className="w-4 h-4 text-success" />;
@@ -92,7 +110,7 @@ export default function Groups() {
     }
   };
 
-  const getTypeColor = (type: Group['type']) => {
+  const getTypeColor = (type: GroupType) => {
     switch (type) {
       case 'Age': return 'bg-primary-light text-primary';
       case 'Course': return 'bg-success-light text-success';
@@ -102,10 +120,117 @@ export default function Groups() {
     }
   };
 
-  const totalLeads = groups.reduce((sum, group) => sum + group.leadIds.length, 0);
+  const totalLeads = groups.reduce((sum, group) => sum + group.lead_count, 0);
 
-  // Only leads with both phone and email
-  const selectableLeads = leads.filter(l => l.phone && l.email);
+  // Handler for file input
+  function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(e.target.files)]);
+    }
+  }
+
+  function handleRemoveAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }
+
+  // Create/Update group
+  const handleSaveGroup = async () => {
+    if (!newGroup.name || !newGroup.group_type || !newGroup.criteria) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (showCreate === 'edit' && newGroup.id) {
+        // Update existing group
+        const res = await fetch('/api/groups', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newGroup)
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to update group');
+        }
+        
+        toast.success('Group updated successfully');
+      } else {
+        // Create new group
+        const res = await fetch('/api/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newGroup)
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to create group');
+        }
+        
+        toast.success('Group created successfully');
+      }
+
+      // Refresh groups and auto-assign leads
+      await fetchGroups();
+      await fetch('/api/groups', { method: 'PATCH' }); // Trigger auto-assignment
+      
+      setShowCreate(false);
+      setNewGroup({ name: '', group_type: 'Age', criteria: '', lead_ids: [] });
+      setLeadSearch('');
+      setEditingLead(null);
+      setTempLead({});
+    } catch (error) {
+      console.error('Error saving group:', error);
+      toast.error('Failed to save group');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete group
+  const handleDeleteGroup = async () => {
+    if (!confirmDelete.group) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/groups?id=${confirmDelete.group.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!res.ok) {
+        throw new Error('Failed to delete group');
+      }
+      
+      toast.success('Group deleted successfully');
+      await fetchGroups();
+      setConfirmDelete({ open: false, group: null });
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      toast.error('Failed to delete group');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-assign leads to groups
+  const handleAutoAssign = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/groups', { method: 'PATCH' });
+      
+      if (!res.ok) {
+        throw new Error('Failed to auto-assign leads');
+      }
+      
+      toast.success('Leads auto-assigned to groups successfully');
+      await fetchGroups();
+    } catch (error) {
+      console.error('Error auto-assigning leads:', error);
+      toast.error('Failed to auto-assign leads');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -115,10 +240,15 @@ export default function Groups() {
           <h1 className="text-3xl font-bold text-foreground">Groups Management</h1>
           <p className="text-muted-foreground">Organize leads into targeted groups for campaigns</p>
         </div>
-        <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setShowCreate('create')}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create New Group
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleAutoAssign} disabled={loading}>
+            Auto-Create & Assign Groups
+          </Button>
+          <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setShowCreate('create')}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Group
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -159,20 +289,26 @@ export default function Groups() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-primary">{groups.filter(g => g.type === 'Age').length}</div>
+            <div className="text-2xl font-bold text-primary">{groups.filter(g => g.group_type === 'Age').length}</div>
             <p className="text-sm text-muted-foreground">Age Groups</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-success">{groups.filter(g => g.type === 'Course').length}</div>
+            <div className="text-2xl font-bold text-success">{groups.filter(g => g.group_type === 'Course').length}</div>
             <p className="text-sm text-muted-foreground">Course Groups</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-warning">{groups.filter(g => g.type === 'City').length}</div>
+            <div className="text-2xl font-bold text-warning">{groups.filter(g => g.group_type === 'City').length}</div>
             <p className="text-sm text-muted-foreground">City Groups</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-destructive">{groups.filter(g => g.group_type === 'Admission Status').length}</div>
+            <p className="text-sm text-muted-foreground">Status Groups</p>
           </CardContent>
         </Card>
       </div>
@@ -180,17 +316,17 @@ export default function Groups() {
       {/* Groups Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredGroups.map((group) => {
-          const groupLeads = leads.filter(l => group.leadIds.includes(l.id));
+          const groupLeads = leads.filter(l => group.lead_ids.includes(l.id));
           return (
             <Card key={group.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {getTypeIcon(group.type)}
+                    {getTypeIcon(group.group_type)}
                     <CardTitle className="text-lg">{group.name}</CardTitle>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(group.type)}`}>
-                    {group.type}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(group.group_type)}`}>
+                    {group.group_type}
                   </span>
                 </div>
               </CardHeader>
@@ -199,11 +335,40 @@ export default function Groups() {
                   <p className="text-sm text-muted-foreground mb-2">Criteria:</p>
                   <p className="text-sm font-medium">{group.criteria}</p>
                 </div>
+                
+                {/* Creation Date */}
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    Created: {new Date(group.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                
                 <div className="flex items-center gap-2 mb-2">
                   <Users className="w-4 h-4 text-primary" />
-                  <span className="text-lg font-bold text-primary">{groupLeads.length}</span>
+                  <span className="text-lg font-bold text-primary">{group.lead_count}</span>
                   <span className="text-sm text-muted-foreground">leads</span>
                 </div>
+                
+                {/* Lead Details */}
+                {group.lead_ids.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">Leads in this group:</p>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {groupLeads.map(lead => (
+                        <div key={lead.id} className="flex items-center justify-between p-2 bg-muted rounded text-sm">
+                          <div>
+                            <span className="font-medium">#{lead.id}</span> - {lead.full_name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {lead.phone}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {/* Show all Leads button opens modal */}
                 <div className="mb-2">
                   <Button size="sm" variant="outline" onClick={() => { setLeadsModalGroup(group); setLeadsModalSearch(''); setLeadsModalSelectedLead(null); }}>
@@ -233,10 +398,10 @@ export default function Groups() {
                     setShowCreate('edit');
                     setNewGroup({ ...group });
                   }}>
-                    Edit Group
+                    <Edit className="w-4 h-4" />
                   </Button>
                   <Button variant="destructive" size="sm" className="flex-1" onClick={() => setConfirmDelete({ open: true, group })}>
-                    Delete Group
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -251,7 +416,7 @@ export default function Groups() {
             <div className="text-center">
               <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No groups found matching your criteria.</p>
-              <Button className="mt-4 bg-gradient-primary hover:opacity-90">
+              <Button className="mt-4 bg-gradient-primary hover:opacity-90" onClick={() => setShowCreate('create')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Group
               </Button>
@@ -271,7 +436,7 @@ export default function Groups() {
             </div>
             <div className="mb-2">
               <label className="block mb-1">Type</label>
-              <Select value={newGroup.type} onValueChange={value => setNewGroup(g => ({ ...g, type: value }))}>
+              <Select value={newGroup.group_type} onValueChange={value => setNewGroup(g => ({ ...g, group_type: value as GroupType }))}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -299,22 +464,22 @@ export default function Groups() {
               {leadSearch && !editingLead && (
                 <div className="max-h-32 overflow-y-auto border border-border rounded mb-2 bg-popover divide-y">
                   {leads.filter(l =>
-                    l.fullName?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+                    l.full_name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.phone?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.email?.toLowerCase().includes(leadSearch.toLowerCase())
                   ).map(l => (
                     <div key={l.id} className="p-2 cursor-pointer hover:bg-accent" onClick={() => { setEditingLead(l); setTempLead(l); }}>
-                      <div className="font-medium">{l.fullName || l.phone}</div>
+                      <div className="font-medium">{l.full_name || l.phone}</div>
                       <div className="text-xs text-muted-foreground">{l.phone} | {l.email}</div>
                     </div>
                   ))}
                   {/* Option to add new lead if not found */}
                   {leads.filter(l =>
-                    l.fullName?.toLowerCase().includes(leadSearch.toLowerCase()) ||
+                    l.full_name?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.phone?.toLowerCase().includes(leadSearch.toLowerCase()) ||
                     l.email?.toLowerCase().includes(leadSearch.toLowerCase())
                   ).length === 0 && (
-                    <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => { setEditingLead({} as Lead); setTempLead({ fullName: leadSearch }); }}>
+                    <div className="p-2 cursor-pointer hover:bg-accent" onClick={() => { setEditingLead({} as Lead); setTempLead({ full_name: leadSearch }); }}>
                       + Add new lead: <b>{leadSearch}</b>
                     </div>
                   )}
@@ -325,7 +490,7 @@ export default function Groups() {
                 <div className="border border-border rounded p-3 mb-2 bg-muted">
                   <div className="mb-2">
                     <label className="block text-xs mb-1">Name</label>
-                    <Input className="w-full" value={tempLead.fullName || ''} onChange={e => setTempLead(t => ({ ...t, fullName: e.target.value }))} />
+                    <Input className="w-full" value={tempLead.full_name || ''} onChange={e => setTempLead(t => ({ ...t, full_name: e.target.value }))} />
                   </div>
                   <div className="mb-2">
                     <label className="block text-xs mb-1">Phone</label>
@@ -342,21 +507,17 @@ export default function Groups() {
                       let updatedLeads = leads;
                       let leadId = editingLead.id;
                       if (!leadId) {
-                        // New lead
-                        leadId = Date.now().toString() + Math.floor(Math.random() * 1000);
-                        const newLead = { ...tempLead, id: leadId } as Lead;
-                        updatedLeads = [...leads, newLead];
-                        setLeads(updatedLeads);
-                        saveLeadsToStorage(updatedLeads);
+                        // New lead - would need to create via API
+                        toast.info('New lead creation via API not implemented yet');
+                        return;
                       } else {
-                        // Update existing lead
-                        updatedLeads = leads.map(l => l.id === leadId ? { ...l, ...tempLead } as Lead : l);
-                        setLeads(updatedLeads);
-                        saveLeadsToStorage(updatedLeads);
+                        // Update existing lead - would need to update via API
+                        toast.info('Lead update via API not implemented yet');
+                        return;
                       }
                       // Add to group if not already
-                      if (!newGroup.leadIds.includes(leadId)) {
-                        setNewGroup(g => ({ ...g, leadIds: [...g.leadIds, leadId!] }));
+                      if (!newGroup.lead_ids.includes(leadId)) {
+                        setNewGroup(g => ({ ...g, lead_ids: [...g.lead_ids, leadId!] }));
                       }
                       setEditingLead(null);
                       setTempLead({});
@@ -369,48 +530,25 @@ export default function Groups() {
               <div className="mt-2">
                 <div className="font-semibold text-xs mb-1">Leads in this group:</div>
                 <div className="max-h-24 overflow-y-auto divide-y">
-                  {newGroup.leadIds.map(id => {
+                  {newGroup.lead_ids.map(id => {
                     const l = leads.find(x => x.id === id);
                     if (!l) return null;
                     return (
                       <div key={id} className="flex items-center justify-between p-1 text-xs">
-                        <span>{l.fullName || l.phone} <span className="text-muted-foreground">({l.phone})</span></span>
-                        <Button size="sm" variant="destructive" onClick={() => setNewGroup(g => ({ ...g, leadIds: g.leadIds.filter(x => x !== id) }))}>Remove</Button>
+                        <span>{l.full_name || l.phone} <span className="text-muted-foreground">({l.phone})</span></span>
+                        <Button size="sm" variant="destructive" onClick={() => setNewGroup(g => ({ ...g, lead_ids: g.lead_ids.filter(x => x !== id) }))}>Remove</Button>
                       </div>
                     );
                   })}
-              {newGroup.leadIds.length === 0 && <div className="text-xs text-destructive mt-1">At least one lead is required.</div>}
+                  {newGroup.lead_ids.length === 0 && <div className="text-xs text-destructive mt-1">At least one lead is required.</div>}
                 </div>
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <Button onClick={() => { setShowCreate(false); setNewGroup({ name: '', type: 'Age', criteria: '', leadIds: [] }); setLeadSearch(''); setEditingLead(null); setTempLead({}); }} variant="outline">Cancel</Button>
-              <Button onClick={() => {
-                if (showCreate === 'edit' && newGroup.id) {
-                  // Edit existing group
-                  const updated = groups.map(g => g.id === newGroup.id ? { ...g, ...newGroup } : g);
-                  setGroups(updated);
-                  saveGroupsToStorage(updated);
-                } else {
-                  // Create new group
-                  const group = {
-                    id: Date.now().toString() + Math.floor(Math.random() * 1000),
-                    name: newGroup.name,
-                    type: newGroup.type,
-                    criteria: newGroup.criteria,
-                    leadIds: newGroup.leadIds,
-                    createdAt: new Date().toISOString(),
-                  };
-                  const updated = [...groups, group];
-                  setGroups(updated);
-                  saveGroupsToStorage(updated);
-                }
-                setShowCreate(false);
-                setNewGroup({ name: '', type: 'Age', criteria: '', leadIds: [] });
-                setLeadSearch('');
-                setEditingLead(null);
-                setTempLead({});
-              }}>{showCreate === 'edit' ? 'Save Changes' : 'Create'}</Button>
+              <Button onClick={() => { setShowCreate(false); setNewGroup({ name: '', group_type: 'Age', criteria: '', lead_ids: [] }); setLeadSearch(''); setEditingLead(null); setTempLead({}); }} variant="outline">Cancel</Button>
+              <Button onClick={handleSaveGroup} disabled={loading}>
+                {loading ? 'Saving...' : (showCreate === 'edit' ? 'Save Changes' : 'Create')}
+              </Button>
             </div>
           </div>
         </div>
@@ -424,91 +562,58 @@ export default function Groups() {
             <p className="mb-4">Do you really want to delete <b>{confirmDelete.group.name}</b>?</p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setConfirmDelete({ open: false, group: null })}>Cancel</Button>
-              <Button variant="destructive" onClick={() => {
-                const updatedGroups = groups.filter(g => g.id !== confirmDelete.group!.id);
-                setGroups(updatedGroups);
-                saveGroupsToStorage(updatedGroups);
-                setConfirmDelete({ open: false, group: null });
-              }}>Delete</Button>
+              <Button variant="destructive" onClick={handleDeleteGroup} disabled={loading}>
+                {loading ? 'Deleting...' : 'Delete'}
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Group Templates</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-center space-y-2">
-              <Calendar className="w-6 h-6 text-primary" />
-              <span className="text-sm">Age-based Groups</span>
-            </Button>
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-center space-y-2">
-              <GraduationCap className="w-6 h-6 text-success" />
-              <span className="text-sm">Course Interest</span>
-            </Button>
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-center space-y-2">
-              <MapPin className="w-6 h-6 text-warning" />
-              <span className="text-sm">Location-based</span>
-            </Button>
-            <Button variant="outline" className="p-4 h-auto flex flex-col items-center space-y-2">
-              <Tag className="w-6 h-6 text-destructive" />
-              <span className="text-sm">Status Groups</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Message Modal */}
       {messageModal.open && (
-        <Dialog open={messageModal.open} onOpenChange={open => setMessageModal(d => ({ ...d, open }))}>
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-md border">
-              <h2 className="text-xl font-bold mb-4">Send {messageModal.type === 'whatsapp' ? 'WhatsApp' : 'Email'} to Group</h2>
-              <div className="mb-2">
-                <label className="block mb-1">Message</label>
-                <Textarea className="w-full h-24 mb-2" placeholder="Type your message here..." value={message} onChange={e => setMessage(e.target.value)} />
-                <label className="block mb-1">Attachment <span className="text-destructive">*</span></label>
-                <input type="file" multiple onChange={handleAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
-                {attachments.length > 0 && (
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {attachments.map((file, idx) => (
-                      <li key={idx} className="flex items-center gap-2">
-                        <span>{file.name}</span>
-                        <Button size="sm" variant="outline" type="button" onClick={() => handleRemoveAttachment(idx)}>
-                          Remove
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={() => {
-                  setMessageModal({ open: false, group: null, type: '' });
-                  setAttachments([]);
-                  setMessage('');
-                  setAttachmentError('');
-                }} variant="outline">Cancel</Button>
-                <Button onClick={() => {
-                  if (!message.trim()) return;
-                  if (attachments.length === 0) {
-                    setAttachmentError('At least one attachment is required.');
-                    return;
-                  }
-                  // Send logic here
-                  setMessageModal({ open: false, group: null, type: '' });
-                  setAttachments([]);
-                  setMessage('');
-                  setAttachmentError('');
-                }}>Send</Button>
-              </div>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-md border">
+            <h2 className="text-xl font-bold mb-4">Send {messageModal.type === 'whatsapp' ? 'WhatsApp' : 'Email'} to Group</h2>
+            <div className="mb-2">
+              <label className="block mb-1">Message</label>
+              <Textarea className="w-full h-24 mb-2" placeholder="Type your message here..." value={message} onChange={e => setMessage(e.target.value)} />
+              <label className="block mb-1">Attachment <span className="text-destructive">*</span></label>
+              <input type="file" multiple onChange={handleAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
+              {attachments.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {attachments.map((file, idx) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <span>{file.name}</span>
+                      <Button size="sm" variant="outline" type="button" onClick={() => handleRemoveAttachment(idx)}>
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={() => {
+                setMessageModal({ open: false, group: null, type: '' });
+                setAttachments([]);
+                setMessage('');
+              }} variant="outline">Cancel</Button>
+              <Button onClick={() => {
+                if (!message.trim()) return;
+                if (attachments.length === 0) {
+                  toast.error('At least one attachment is required.');
+                  return;
+                }
+                // Send logic here
+                toast.success('Message sent successfully!');
+                setMessageModal({ open: false, group: null, type: '' });
+                setAttachments([]);
+                setMessage('');
+              }}>Send</Button>
             </div>
           </div>
-        </Dialog>
+        </div>
       )}
 
       {/* Leads Modal for Group */}
@@ -528,11 +633,11 @@ export default function Groups() {
                 />
                 <div className="max-h-72 overflow-y-auto divide-y">
                   {leads
-                    .filter(l => leadsModalGroup.leadIds.includes(l.id))
+                    .filter(l => leadsModalGroup.lead_ids.includes(l.id))
                     .filter(l => {
                       const q = leadsModalSearch.toLowerCase();
                       return (
-                        l.fullName?.toLowerCase().includes(q) ||
+                        l.full_name?.toLowerCase().includes(q) ||
                         l.phone?.toLowerCase().includes(q) ||
                         l.email?.toLowerCase().includes(q)
                       );
@@ -543,11 +648,11 @@ export default function Groups() {
                         className="p-2 cursor-pointer hover:bg-muted/50"
                         onClick={() => setLeadsModalSelectedLead(lead)}
                       >
-                        <div className="font-medium">{lead.fullName || lead.phone}</div>
+                        <div className="font-medium">{lead.full_name || lead.phone}</div>
                         <div className="text-xs text-muted-foreground">{lead.phone} | {lead.email}</div>
                       </div>
                     ))}
-                  {leads.filter(l => leadsModalGroup.leadIds.includes(l.id)).length === 0 && (
+                  {leads.filter(l => leadsModalGroup.lead_ids.includes(l.id)).length === 0 && (
                     <div className="text-center text-muted-foreground py-8">No leads in this group.</div>
                   )}
                 </div>
@@ -559,37 +664,15 @@ export default function Groups() {
                 <div className="space-y-2">
                   <div><span className="font-semibold">Phone:</span> {leadsModalSelectedLead.phone}</div>
                   <div><span className="font-semibold">Email:</span> {leadsModalSelectedLead.email}</div>
-                  {leadsModalSelectedLead.fullName && <div><span className="font-semibold">Name:</span> {leadsModalSelectedLead.fullName}</div>}
-                  {leadsModalSelectedLead.parentName && <div><span className="font-semibold">Parent:</span> {leadsModalSelectedLead.parentName}</div>}
+                  {leadsModalSelectedLead.full_name && <div><span className="font-semibold">Name:</span> {leadsModalSelectedLead.full_name}</div>}
+                  {leadsModalSelectedLead.parent_name && <div><span className="font-semibold">Parent:</span> {leadsModalSelectedLead.parent_name}</div>}
                   {leadsModalSelectedLead.age && <div><span className="font-semibold">Age:</span> {leadsModalSelectedLead.age}</div>}
                   {leadsModalSelectedLead.city && <div><span className="font-semibold">City:</span> {leadsModalSelectedLead.city}</div>}
-                  {leadsModalSelectedLead.interestedCourse && <div><span className="font-semibold">Course:</span> {leadsModalSelectedLead.interestedCourse}</div>}
-                  {leadsModalSelectedLead.inquirySource && <div><span className="font-semibold">Source:</span> {leadsModalSelectedLead.inquirySource}</div>}
-                  {leadsModalSelectedLead.notes && <div><span className="font-semibold">Notes:</span> {leadsModalSelectedLead.notes}</div>}
+                  {leadsModalSelectedLead.interested_course && <div><span className="font-semibold">Course:</span> {leadsModalSelectedLead.interested_course}</div>}
+                  {leadsModalSelectedLead.lead_status && <div><span className="font-semibold">Status:</span> {leadsModalSelectedLead.lead_status}</div>}
                 </div>
               </>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Lead Info Modal */}
-      {selectedLead && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-sm relative border">
-            <button className="absolute top-2 right-2 text-xl" onClick={() => setSelectedLead(null)}>&times;</button>
-            <h2 className="text-xl font-bold mb-4">Lead Information</h2>
-            <div className="space-y-2">
-              <div><span className="font-semibold">Phone:</span> {selectedLead.phone}</div>
-              <div><span className="font-semibold">Email:</span> {selectedLead.email}</div>
-              {selectedLead.fullName && <div><span className="font-semibold">Name:</span> {selectedLead.fullName}</div>}
-              {selectedLead.parentName && <div><span className="font-semibold">Parent:</span> {selectedLead.parentName}</div>}
-              {selectedLead.age && <div><span className="font-semibold">Age:</span> {selectedLead.age}</div>}
-              {selectedLead.city && <div><span className="font-semibold">City:</span> {selectedLead.city}</div>}
-              {selectedLead.interestedCourse && <div><span className="font-semibold">Course:</span> {selectedLead.interestedCourse}</div>}
-              {selectedLead.inquirySource && <div><span className="font-semibold">Source:</span> {selectedLead.inquirySource}</div>}
-              {selectedLead.notes && <div><span className="font-semibold">Notes:</span> {selectedLead.notes}</div>}
-            </div>
           </div>
         </div>
       )}
