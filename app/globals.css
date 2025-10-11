@@ -49,6 +49,33 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--foreground));
   }
+  
+  /* Fix date input calendar icon visibility - Simple approach */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 1 !important;
+    cursor: pointer;
+  }
+  
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 1 !important;
+    filter: brightness(0) invert(1);
+  }
+  
+  /* Firefox date input styling */
+  input[type="date"]::-moz-calendar-picker-indicator {
+    opacity: 1 !important;
+    cursor: pointer;
+  }
+  
+  .dark input[type="date"]::-moz-calendar-picker-indicator {
+    opacity: 1 !important;
+    filter: brightness(0) invert(1);
+  }
+  
+  /* Ensure date input has proper padding for the icon */
+  input[type="date"] {
+    padding-right: 40px !important;
+  }
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
