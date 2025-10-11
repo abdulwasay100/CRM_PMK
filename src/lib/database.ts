@@ -412,7 +412,7 @@ export async function getLeadHistory(leadId: number) {
 }
 
 // ---------------- Notifications helpers ----------------
-export type NotificationType = 'no_leads' | 'reminder_status' | 'reports';
+export type NotificationType = 'no_leads' | 'reminder_status' | 'reports' | 'group_creation';
 export type NewNotification = {
   type: NotificationType;
   title: string;

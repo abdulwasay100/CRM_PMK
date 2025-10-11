@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     // Create notification for group creation
     await createNotification({
-      type: 'reports',
+      type: 'group_creation',
       title: `Group Created: ${name}`,
       message: `New ${group_type} group "${name}" has been created with criteria: ${criteria}`,
       meta: {

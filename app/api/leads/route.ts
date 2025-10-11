@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       // Create notification for auto-group creation if groups were created
       if (groupsCreated > 0) {
         await createNotification({
-          type: 'reports',
+          type: 'group_creation',
           title: `Auto-Groups Created`,
           message: `${groupsCreated} new groups were automatically created based on lead data`,
           meta: {
