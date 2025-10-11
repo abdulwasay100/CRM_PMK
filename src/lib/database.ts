@@ -145,6 +145,10 @@ export async function initializeDatabase() {
     `);
     console.log('✅ Lead groups table created');
 
+    // Drop messages table if exists
+    await pool.execute(`DROP TABLE IF EXISTS messages`);
+    console.log('✅ Messages table dropped');
+
     // Insert default admin user if not exists
     const [existingAdmin] = await pool.execute(
       'SELECT id FROM users WHERE username = ?',

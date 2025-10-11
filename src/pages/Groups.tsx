@@ -52,7 +52,6 @@ export default function Groups() {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [emailSubject, setEmailSubject] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState('custom');
   const [emailLoading, setEmailLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
   const [leadsModalGroup, setLeadsModalGroup] = useState<Group | null>(null);
@@ -275,7 +274,6 @@ export default function Groups() {
         groupId: messageModal.group.id,
         subject: emailSubject,
         message: message,
-        template: selectedTemplate,
         attachments: attachmentData
       };
 
@@ -294,7 +292,6 @@ export default function Groups() {
         setEmailSubject('');
         setMessage('');
         setAttachments([]);
-        setSelectedTemplate('custom');
       } else {
         toast.error(result.message);
       }
@@ -651,23 +648,6 @@ export default function Groups() {
           <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-lg border max-h-[90vh] overflow-y-auto">
               <h2 className="text-xl font-bold mb-4">Send {messageModal.type === 'whatsapp' ? 'WhatsApp' : 'Email'} to Group</h2>
             
-            {messageModal.type === 'email' && (
-              <div className="mb-4">
-                <label className="block mb-1">Email Templates</label>
-                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select template (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="custom">Custom Message</SelectItem>
-                    <SelectItem value="courseDetails">Course Details</SelectItem>
-                    <SelectItem value="fees">Fee Structure</SelectItem>
-                    <SelectItem value="schedule">Class Schedule</SelectItem>
-                    <SelectItem value="discountOffers">Discount Offers</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div className="mb-2">
               {messageModal.type === 'email' && (
@@ -699,7 +679,6 @@ export default function Groups() {
                   setAttachments([]);
                   setMessage('');
                 setEmailSubject('');
-                setSelectedTemplate('custom');
                 }} variant="outline">Cancel</Button>
                 <Button onClick={() => {
                 if (messageModal.type === 'whatsapp') {
