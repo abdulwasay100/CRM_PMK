@@ -6,7 +6,8 @@ import { getLeadsByGroup, getLeadById } from '@/lib/database';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { type, to, subject, message, template, leadId, groupId, attachments } = body;
+    console.log('Email API received:', body);
+    const { type, to, subject, message, template, leadId, groupId, attachments, recipients } = body;
 
     if (type === 'single') {
       // Send to single recipient
@@ -22,12 +23,15 @@ export async function POST(req: NextRequest) {
 
     if (type === 'bulk') {
       // Send to multiple recipients
-      let recipients = [];
+      let emailRecipients = [];
 
-      if (groupId) {
+      // If recipients are provided directly (from Quick Message)
+      if (recipients && recipients.length > 0) {
+        emailRecipients = recipients;
+      } else if (groupId) {
         // Get leads from group
         const leads = await getLeadsByGroup(groupId);
-        recipients = leads.map(lead => ({
+        emailRecipients = leads.map(lead => ({
           email: lead.email,
           name: lead.full_name || lead.name
         }));
@@ -35,26 +39,28 @@ export async function POST(req: NextRequest) {
         // Get single lead
         const lead = await getLeadById(leadId);
         if (lead) {
-          recipients = [{
+          emailRecipients = [{
             email: lead.email,
             name: lead.full_name || lead.name
           }];
         }
       }
 
-      if (recipients.length === 0) {
+      if (emailRecipients.length === 0) {
         return NextResponse.json({ success: false, message: 'No recipients found' }, { status: 400 });
       }
 
       // Use template if specified
       let emailContent = message;
       if (template && template !== 'custom' && emailTemplates[template as keyof typeof emailTemplates]) {
-        const templateData = emailTemplates[template as keyof typeof emailTemplates];
-        emailContent = templateData.html;
+        const templateFunction = emailTemplates[template as keyof typeof emailTemplates];
+        // For now, use the message as template functions require parameters
+        // TODO: Implement proper template parameter handling
+        emailContent = message;
       }
 
       const result = await sendBulkEmails({
-        recipients,
+        recipients: emailRecipients,
         subject,
         html: emailContent,
         attachments

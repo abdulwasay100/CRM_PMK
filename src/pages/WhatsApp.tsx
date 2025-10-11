@@ -65,10 +65,20 @@ export default function WhatsApp() {
   const [quickSearch, setQuickSearch] = useState('');
   const [quickSelectedLeads, setQuickSelectedLeads] = useState<string[]>([]);
   const [quickMessage, setQuickMessage] = useState('');
+  const [quickAttachments, setQuickAttachments] = useState<File[]>([]);
   // Filter leads by search
-  const quickLeadOptions: any[] = [];
-  function toggleQuickLead(id: string) {
-    setQuickSelectedLeads(prev => prev.includes(id) ? prev.filter(lid => lid !== id) : [...prev, id]);
+  const quickLeadOptions = leads.filter(lead => {
+    if (!quickSearch.trim()) return false;
+    const searchTerm = quickSearch.toLowerCase();
+    return (
+      lead.full_name?.toLowerCase().includes(searchTerm) ||
+      lead.phone?.toLowerCase().includes(searchTerm) ||
+      lead.email?.toLowerCase().includes(searchTerm)
+    );
+  });
+  function toggleQuickLead(id: number) {
+    const idStr = id.toString();
+    setQuickSelectedLeads(prev => prev.includes(idStr) ? prev.filter(lid => lid !== idStr) : [...prev, idStr]);
   }
   function sendQuickWhatsApp() {
     if (quickSelectedLeads.length === 0) {
@@ -77,7 +87,7 @@ export default function WhatsApp() {
     }
     alert('WhatsApp message sent to: ' + quickSelectedLeads.map(id => {
       const l = leads.find(l => l.id === id);
-      return l ? l.fullName : id;
+      return l ? l.full_name : id;
     }).join(', ') + '\n\n' + quickMessage);
   }
 
@@ -191,6 +201,17 @@ export default function WhatsApp() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   }
 
+  // Quick Message attachment handlers
+  function handleQuickAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      setQuickAttachments(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  }
+
+  function handleRemoveQuickAttachment(index: number) {
+    setQuickAttachments(prev => prev.filter((_, i) => i !== index));
+  }
+
   // Send email to selected groups
   const handleSendEmail = async () => {
     if (!emailSubject.trim() || !message.trim()) {
@@ -270,20 +291,39 @@ export default function WhatsApp() {
 
     setEmailLoading(true);
     try {
+      // Convert attachments to base64 for API
+      const attachmentData = await Promise.all(
+        quickAttachments.map(async (file) => ({
+          filename: file.name,
+          content: Buffer.from(await file.arrayBuffer()).toString('base64'),
+          contentType: file.type
+        }))
+      );
+
+      const recipients = quickSelectedLeads.map(leadId => {
+        const lead = leads.find(l => l.id.toString() === leadId);
+        return {
+          email: lead?.email || '',
+          name: lead?.full_name || lead?.phone || ''
+        };
+      }).filter(r => r.email && r.email.trim() !== '');
+
+      if (recipients.length === 0) {
+        toast.error('No valid email addresses found for selected leads');
+        setEmailLoading(false);
+        return;
+      }
+
       const emailData = {
         type: 'bulk',
-        recipients: quickSelectedLeads.map(leadId => {
-          const lead = leads.find(l => l.id === leadId);
-          return {
-            email: lead?.email || '',
-            name: lead?.full_name || lead?.phone || ''
-          };
-        }).filter(r => r.email),
+        recipients,
         subject: emailSubject || 'Message from Polymath Kids',
         html: quickMessage,
-        attachments: []
+        attachments: attachmentData
       };
 
+      console.log('Sending email data:', emailData);
+      
       const res = await fetch('/api/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -291,6 +331,7 @@ export default function WhatsApp() {
       });
 
       const result = await res.json();
+      console.log('Email API response:', result);
       
       if (result.success) {
         toast.success(result.message);
@@ -299,8 +340,10 @@ export default function WhatsApp() {
         setQuickMessage('');
         setQuickSelectedLeads([]);
         setEmailSubject('');
+        setQuickAttachments([]);
       } else {
         toast.error(result.message);
+        console.error('Email API error:', result);
       }
     } catch (error) {
       console.error('Error sending quick email:', error);
@@ -469,8 +512,8 @@ export default function WhatsApp() {
                 )}
                 {quickLeadOptions.map(l => (
                   <div key={l.id} className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer" onClick={() => toggleQuickLead(l.id)}>
-                    <input type="checkbox" checked={quickSelectedLeads.includes(l.id)} readOnly className="accent-primary" />
-                    <span>{l.fullName} ({l.phone}{l.email ? `, ${l.email}` : ''})</span>
+                    <input type="checkbox" checked={quickSelectedLeads.includes(l.id.toString())} readOnly className="accent-primary" />
+                    <span>{l.full_name} ({l.phone}{l.email ? `, ${l.email}` : ''})</span>
                   </div>
                 ))}
               </div>
@@ -479,6 +522,23 @@ export default function WhatsApp() {
             <div>
               <label className="block text-xs font-medium mb-1">Message</label>
               <Textarea value={quickMessage} onChange={e => setQuickMessage(e.target.value)} rows={5} className="w-full text-base" placeholder="Type your message here..." />
+            </div>
+            {/* Attachments */}
+            <div>
+              <label className="block text-xs font-medium mb-1">Attachments (Optional)</label>
+              <input type="file" multiple onChange={handleQuickAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
+              {quickAttachments.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {quickAttachments.map((file, idx) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <span>{file.name}</span>
+                      <Button size="sm" variant="outline" type="button" onClick={() => handleRemoveQuickAttachment(idx)}>
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="mb-2">
               <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
