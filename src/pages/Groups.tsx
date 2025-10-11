@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { showNotification, playNotificationSound } from "@/components/ui/notification-sound";
 import React from "react";
 
 // Types
@@ -165,6 +166,7 @@ export default function Groups() {
         }
         
         toast.success('Group updated successfully');
+        playNotificationSound('success');
       } else {
         // Create new group
         const res = await fetch('/api/groups', {
@@ -178,6 +180,7 @@ export default function Groups() {
         }
         
         toast.success('Group created successfully');
+        playNotificationSound('success');
       }
 
       // Refresh groups and auto-assign leads
@@ -212,6 +215,7 @@ export default function Groups() {
       }
       
       toast.success('Group deleted successfully');
+      playNotificationSound('success');
       await fetchGroups();
       setConfirmDelete({ open: false, group: null });
     } catch (error) {
@@ -233,6 +237,7 @@ export default function Groups() {
       }
       
       toast.success('Leads auto-assigned to groups successfully');
+      playNotificationSound('info');
       await fetchGroups();
     } catch (error) {
       console.error('Error auto-assigning leads:', error);

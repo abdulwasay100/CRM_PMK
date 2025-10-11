@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import React from "react";
 import { matchesAllTermsInFields } from "@/lib/utils";
 import { SearchContext } from "@/context/SearchContext";
+import { playNotificationSound } from "@/components/ui/notification-sound";
 
 async function fetchLeadsFromDB() {
   const res = await fetch('/api/leads', { 

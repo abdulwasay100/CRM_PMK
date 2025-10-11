@@ -14,6 +14,7 @@ import { SearchContext } from "@/context/SearchContext";
 import { useTheme } from "@/context/ThemeContext";
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { playNotificationSound } from "@/components/ui/notification-sound";
 
 // Notification type from API
 type AppNotification = {
@@ -39,7 +40,18 @@ export function TopNavbar() {
     try {
       const res = await fetch(`/api/notifications?page=${p}&pageSize=${pageSize}&ts=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
-      setNotifications((data.notifications || []) as AppNotification[]);
+      const newNotifications = (data.notifications || []) as AppNotification[];
+      
+      // Check for new notifications and play sound
+      const previousCount = notifications.length;
+      const currentCount = newNotifications.length;
+      
+      if (currentCount > previousCount) {
+        // New notifications arrived, play sound
+        playNotificationSound('info');
+      }
+      
+      setNotifications(newNotifications);
       setPage(data.page || p);
     } catch {}
   }
@@ -100,6 +112,12 @@ export function TopNavbar() {
             onClick={async () => {
               const next = !showNotifications;
               setShowNotifications(next);
+              
+              // Play sound when opening notifications
+              if (next) {
+                playNotificationSound('info');
+              }
+              
               try {
                 // Run server scans (lead thresholds + due-soon reminders), then refresh
                 await fetch('/api/notifications', { method: 'PATCH' });
@@ -134,6 +152,7 @@ export function TopNavbar() {
                           className="text-xs text-primary hover:underline"
                           onClick={async () => {
                             await fetch('/api/notifications', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: n.id }) });
+                            playNotificationSound('success');
                             await loadNotifications();
                           }}
                         >Mark read</button>

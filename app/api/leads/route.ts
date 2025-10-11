@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initializeDatabase, createLead, getLeads, convertLead, autoAssignLeadsToGroups, autoCreateGroupsFromLeads } from '@/lib/database'
+import { initializeDatabase, createLead, getLeads, convertLead, autoAssignLeadsToGroups, autoCreateGroupsFromLeads, createNotification } from '@/lib/database'
 
 export async function GET() {
   await initializeDatabase()
@@ -30,8 +30,22 @@ export async function POST(req: NextRequest) {
     
     // Auto-create groups based on new lead data and assign leads
     try {
-      await autoCreateGroupsFromLeads()
+      const groupsCreated = await autoCreateGroupsFromLeads()
       await autoAssignLeadsToGroups()
+      
+      // Create notification for auto-group creation if groups were created
+      if (groupsCreated > 0) {
+        await createNotification({
+          type: 'reports',
+          title: `Auto-Groups Created`,
+          message: `${groupsCreated} new groups were automatically created based on lead data`,
+          meta: {
+            groupsCreated: groupsCreated,
+            leadId: result.id,
+            leadName: body.full_name
+          }
+        })
+      }
     } catch {}
     
     return NextResponse.json({ id: result.id }, { status: 201 })

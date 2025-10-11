@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initializeDatabase, getAllGroups, createGroup, updateGroup, deleteGroup, autoAssignLeadsToGroups, autoCreateGroupsFromLeads } from '@/lib/database';
+import { initializeDatabase, getAllGroups, createGroup, updateGroup, deleteGroup, autoAssignLeadsToGroups, autoCreateGroupsFromLeads, createNotification } from '@/lib/database';
 
 // GET /api/groups - Get all groups
 export async function GET(req: NextRequest) {
@@ -35,6 +35,19 @@ export async function POST(req: NextRequest) {
       group_type,
       criteria,
       lead_ids: lead_ids || []
+    });
+
+    // Create notification for group creation
+    await createNotification({
+      type: 'reports',
+      title: `Group Created: ${name}`,
+      message: `New ${group_type} group "${name}" has been created with criteria: ${criteria}`,
+      meta: {
+        groupId: newGroup.id,
+        groupName: name,
+        groupType: group_type,
+        criteria: criteria
+      }
     });
 
     // Auto-assign leads to groups after creating new group

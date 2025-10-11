@@ -14,6 +14,7 @@ import React, { useState } from "react";
 import { matchesAllTermsInFields } from "@/lib/utils";
 import { SearchContext } from "@/context/SearchContext";
 import { Country, City } from 'country-state-city';
+import { playNotificationSound } from "@/components/ui/notification-sound";
 
 interface LeadFormData {
   fullName: string;
@@ -262,12 +263,14 @@ export default function AddLead() {
       age = calculateAgeFromDOB(data.dob);
       if (age < 6 || age > 16) {
         toast.error("Age must be between 6 and 16 years");
+        playNotificationSound('error');
         return;
       }
     } else if (data.age) {
       age = data.age;
       if (age < 6 || age > 16) {
         toast.error("Age must be between 6 and 16 years");
+        playNotificationSound('error');
         return;
       }
     } else {
@@ -353,6 +356,7 @@ export default function AddLead() {
     });
     setGroups(dedupedGroups);
     toast.success("Lead added successfully!");
+    playNotificationSound('success');
     navigate.push("/leads");
   };
 

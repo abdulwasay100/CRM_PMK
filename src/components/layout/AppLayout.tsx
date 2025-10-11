@@ -5,12 +5,16 @@ import { TopNavbar } from "./TopNavbar";
 import { SearchProvider } from "@/context/SearchContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useNotificationSound } from "@/components/ui/notification-sound";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  // Initialize sound notifications
+  useNotificationSound();
+
   return (
     <ThemeProvider>
       <SearchProvider>
