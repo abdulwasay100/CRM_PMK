@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { Plus, MessageSquare, Send, Eye, Reply, Users, Edit } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, MessageSquare, Send, Eye, Reply, Users, Edit, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { WhatsAppTemplate } from "@/types";
+import { toast } from "sonner";
+import { showNotification, playNotificationSound } from "@/components/ui/notification-sound";
 import React from 'react';
 
 export default function WhatsApp() {
@@ -41,8 +43,11 @@ export default function WhatsApp() {
   };
 
   // Real data
-  const groups = []; // No mock data
-  const leads = []; // No mock data
+  const [groups, setGroups] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
   const allCourses = [];
   const allLocations = [];
   const allInterests = [];
@@ -61,7 +66,7 @@ export default function WhatsApp() {
   const [quickSelectedLeads, setQuickSelectedLeads] = useState<string[]>([]);
   const [quickMessage, setQuickMessage] = useState('');
   // Filter leads by search
-  const quickLeadOptions = [];
+  const quickLeadOptions: any[] = [];
   function toggleQuickLead(id: string) {
     setQuickSelectedLeads(prev => prev.includes(id) ? prev.filter(lid => lid !== id) : [...prev, id]);
   }
@@ -77,7 +82,7 @@ export default function WhatsApp() {
   }
 
   // Course data (from AddLead)
-  const courseData = {
+  const courseData: Record<string, any> = {
     Math: { fees: { 'One on One': 5000, Group: 3000 }, duration: '3 months', schedules: ['Mon/Wed 4-5pm', 'Tue/Thu 5-6pm'] },
     Science: { fees: { 'One on One': 6000, Group: 3500 }, duration: '4 months', schedules: ['Mon/Wed 5-6pm', 'Fri 4-6pm'] },
     English: { fees: { 'One on One': 4500, Group: 2500 }, duration: '2 months', schedules: ['Sat/Sun 10-11am', 'Mon/Wed 6-7pm'] },
@@ -142,6 +147,168 @@ export default function WhatsApp() {
   function toggleTemplate(key: string) {
     setSelectedTemplates(prev => prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]);
   }
+
+  // Fetch groups and leads
+  const fetchGroups = useCallback(async () => {
+    try {
+      const res = await fetch('/api/groups', { 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const data = await res.json();
+      setGroups(data.groups || []);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    }
+  }, []);
+
+  const fetchLeads = useCallback(async () => {
+    try {
+      const res = await fetch('/api/leads', { 
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const data = await res.json();
+      setLeads(data.leads || []);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGroups();
+    fetchLeads();
+  }, [fetchGroups, fetchLeads]);
+
+  // Handler for file input
+  function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  }
+
+  function handleRemoveAttachment(index: number) {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }
+
+  // Send email to selected groups
+  const handleSendEmail = async () => {
+    if (!emailSubject.trim() || !message.trim()) {
+      toast.error('Please fill in subject and message');
+      return;
+    }
+
+    if (selectedGroups.length === 0) {
+      toast.error('Please select at least one group');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      // Convert attachments to base64 for API
+      const attachmentData = await Promise.all(
+        attachments.map(async (file) => ({
+          filename: file.name,
+          content: Buffer.from(await file.arrayBuffer()).toString('base64'),
+          contentType: file.type
+        }))
+      );
+
+      // Send to all selected groups
+      const emailPromises = selectedGroups.map(async (groupId) => {
+        const emailData = {
+          type: 'bulk',
+          groupId: parseInt(groupId),
+          subject: emailSubject,
+          message: message,
+          attachments: attachmentData
+        };
+
+        const res = await fetch('/api/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emailData)
+        });
+
+        return res.json();
+      });
+
+      const results = await Promise.all(emailPromises);
+      const successCount = results.filter(r => r.success).length;
+      const totalCount = results.length;
+
+      if (successCount > 0) {
+        toast.success(`Email sent successfully to ${successCount}/${totalCount} groups`);
+        playNotificationSound('success');
+        setSentCount(c => c + successCount);
+        setEmailSubject('');
+        setMessage('');
+        setAttachments([]);
+        setSelectedGroups([]);
+      } else {
+        toast.error('Failed to send emails to any groups');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  // Send email to quick selected leads
+  const handleSendQuickEmail = async () => {
+    if (quickSelectedLeads.length === 0) {
+      toast.error('Please select at least one recipient');
+      return;
+    }
+
+    if (!quickMessage.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const emailData = {
+        type: 'bulk',
+        recipients: quickSelectedLeads.map(leadId => {
+          const lead = leads.find(l => l.id === leadId);
+          return {
+            email: lead?.email || '',
+            name: lead?.full_name || lead?.phone || ''
+          };
+        }).filter(r => r.email),
+        subject: emailSubject || 'Message from Polymath Kids',
+        html: quickMessage,
+        attachments: []
+      };
+
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+      });
+
+      const result = await res.json();
+      
+      if (result.success) {
+        toast.success(result.message);
+        playNotificationSound('success');
+        setSentCount(c => c + result.details?.success || 0);
+        setQuickMessage('');
+        setQuickSelectedLeads([]);
+        setEmailSubject('');
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error sending quick email:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   function sendWhatsApp() {
     setSentCount(c => c + 1);
@@ -229,10 +396,32 @@ export default function WhatsApp() {
                 ))}
               </div>
             </div>
+            {/* Email Subject */}
+            <div>
+              <label className="block text-xs font-medium mb-1">Email Subject</label>
+              <Input value={emailSubject} onChange={e => setEmailSubject(e.target.value)} placeholder="Enter email subject..." className="w-full" />
+            </div>
             {/* Message area */}
             <div>
               <label className="block text-xs font-medium mb-1">Message</label>
               <Textarea value={message} onChange={e => setMessage(e.target.value)} rows={7} className="w-full text-base" />
+            </div>
+            {/* Attachments */}
+            <div>
+              <label className="block text-xs font-medium mb-1">Attachments (Optional)</label>
+              <input type="file" multiple onChange={handleAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
+              {attachments.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {attachments.map((file, idx) => (
+                    <li key={idx} className="flex items-center gap-2">
+                      <span>{file.name}</span>
+                      <Button size="sm" variant="outline" type="button" onClick={() => handleRemoveAttachment(idx)}>
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="mb-2">
               <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
@@ -250,9 +439,9 @@ export default function WhatsApp() {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.174.2-.298.3-.497.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51-.173-.007-.372-.009-.571-.009-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.099 3.2 5.077 4.363.711.306 1.263.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.288.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
               Send to WhatsApp
             </Button>
-            <Button style={{background:'#0072C6', color:'#fff'}} className="hover:opacity-90 w-full flex items-center justify-center gap-2" variant="default" onClick={() => alert('Email sent!\n\n' + message)}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0l-7.5-4.615A2.25 2.25 0 012.25 6.993V6.75" /></svg>
-              Send to Email
+            <Button style={{background:'#0072C6', color:'#fff'}} className="hover:opacity-90 w-full flex items-center justify-center gap-2" variant="default" onClick={handleSendEmail} disabled={emailLoading}>
+              <Mail className="w-5 h-5" />
+              {emailLoading ? 'Sending...' : 'Send to Email'}
             </Button>
           </CardContent>
         </Card>
@@ -307,18 +496,9 @@ export default function WhatsApp() {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 inline-block mr-2"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.198.297-.767.966-.94 1.164-.173.198-.347.223-.644.075-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.174.2-.298.3-.497.099-.198.05-.372-.025-.521-.075-.149-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51-.173-.007-.372-.009-.571-.009-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.099 3.2 5.077 4.363.711.306 1.263.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.288.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
               Send WhatsApp
             </Button>
-            <Button style={{background:'#0072C6', color:'#fff'}} className="hover:opacity-90 w-full mt-2" variant="default" onClick={() => {
-              if (quickSelectedLeads.length === 0) {
-                alert('Please select at least one recipient.');
-                return;
-              }
-              alert('Email sent to: ' + quickSelectedLeads.map(id => {
-                const l = leads.find(l => l.id === id);
-                return l ? l.fullName : id;
-              }).join(', ') + '\n\n' + quickMessage);
-            }}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25H4.5a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0l-7.5-4.615A2.25 2.25 0 012.25 6.993V6.75" /></svg>
-              Send to Email
+            <Button style={{background:'#0072C6', color:'#fff'}} className="hover:opacity-90 w-full mt-2" variant="default" onClick={handleSendQuickEmail} disabled={emailLoading}>
+              <Mail className="w-5 h-5 inline-block mr-2" />
+              {emailLoading ? 'Sending...' : 'Send to Email'}
             </Button>
           </CardContent>
         </Card>

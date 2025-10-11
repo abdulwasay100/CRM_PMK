@@ -299,6 +299,44 @@ export async function getLeads() {
   return rows as any[];
 }
 
+export async function getLeadById(id: number) {
+  const [rows] = await pool.execute('SELECT * FROM leads WHERE id = ?', [id]);
+  return (rows as any[])[0] || null;
+}
+
+export async function getLeadsByGroup(groupId: number) {
+  // First get the group to get the lead_ids
+  const group = await getGroupById(groupId);
+  if (!group || !group.lead_ids) {
+    return [];
+  }
+  
+  // Handle both JSON string and array formats
+  let leadIds;
+  if (typeof group.lead_ids === 'string') {
+    try {
+      leadIds = JSON.parse(group.lead_ids);
+    } catch (error) {
+      console.error('Error parsing lead_ids:', error);
+      return [];
+    }
+  } else {
+    leadIds = group.lead_ids;
+  }
+  
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    return [];
+  }
+  
+  // Get leads by IDs
+  const placeholders = leadIds.map(() => '?').join(',');
+  const [rows] = await pool.execute(
+    `SELECT * FROM leads WHERE id IN (${placeholders}) ORDER BY created_at DESC`,
+    leadIds
+  );
+  return rows as any[];
+}
+
 export async function updateLead(id: number, fields: Partial<NewLead>) {
   const keys = Object.keys(fields) as (keyof NewLead)[]
   if (keys.length === 0) return { affectedRows: 0 }

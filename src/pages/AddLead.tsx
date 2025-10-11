@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { Lead } from "@/types";
 import React, { useState } from "react";
 import { matchesAllTermsInFields } from "@/lib/utils";
@@ -364,7 +364,7 @@ export default function AddLead() {
   const [selectedCourse, setSelectedCourse] = React.useState("");
   const [selectedMode, setSelectedMode] = React.useState("");
   const [fees, setFees] = React.useState(0);
-  const [selectedDiscount, setSelectedDiscount] = React.useState("0");
+  const [selectedDiscount, setSelectedDiscount] = React.useState("no-discount");
   const [duration, setDuration] = React.useState("");
   const [selectedSchedule, setSelectedSchedule] = React.useState("");
   const [schedules, setSchedules] = React.useState<string[]>([]);
@@ -425,7 +425,7 @@ export default function AddLead() {
   React.useEffect(() => {
     if (selectedCourse && selectedMode && courseData[selectedCourse]) {
       const baseFee = courseData[selectedCourse].fees[selectedMode] || 0;
-      const discount = Number(selectedDiscount);
+      const discount = selectedDiscount === 'no-discount' ? 0 : Number(selectedDiscount);
       const discountedFee = Math.round(baseFee * (1 - discount / 100));
       setFees(discountedFee);
     }
@@ -450,12 +450,74 @@ export default function AddLead() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   }
 
+  // Email sending state
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+
   // Dummy send handlers
   function sendWhatsApp() {
     alert("WhatsApp message sent!\n\n" + message);
   }
-  function sendEmail() {
-    alert("Email sent!\n\n" + message);
+
+  // Send email to individual lead
+  async function sendEmail() {
+    if (!watchedEmail.trim()) {
+      toast.error('Please enter an email address');
+      return;
+    }
+
+    if (!emailSubject.trim()) {
+      toast.error('Please enter email subject');
+      return;
+    }
+
+    if (!message.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      // Convert attachments to base64 for API
+      const attachmentData = await Promise.all(
+        attachments.map(async (file) => ({
+          filename: file.name,
+          content: Buffer.from(await file.arrayBuffer()).toString('base64'),
+          contentType: file.type
+        }))
+      );
+
+      const emailData = {
+        type: 'single',
+        to: watchedEmail,
+        subject: emailSubject,
+        html: message,
+        attachments: attachmentData
+      };
+
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+      });
+
+      const result = await res.json();
+      
+      if (result.success) {
+        toast.success('Email sent successfully!');
+        playNotificationSound('success');
+        setEmailSubject('');
+        setMessage('');
+        setAttachments([]);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setEmailLoading(false);
+    }
   }
 
   // Find existing lead by phone or email
@@ -836,7 +898,7 @@ export default function AddLead() {
                         <SelectValue placeholder="Select discount" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0">No discount</SelectItem>
+                        <SelectItem value="no-discount">No discount</SelectItem>
                         <SelectItem value="10">10%</SelectItem>
                         <SelectItem value="20">20%</SelectItem>
                         <SelectItem value="30">30%</SelectItem>
@@ -893,6 +955,16 @@ export default function AddLead() {
                       </ul>
                     )}
                   </div>
+                  {/* Email Subject */}
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Email Subject</label>
+                    <Input 
+                      value={emailSubject} 
+                      onChange={e => setEmailSubject(e.target.value)} 
+                      placeholder="Enter email subject..." 
+                      className="w-full text-base" 
+                    />
+                  </div>
                   {/* Send section */}
                   <div className="mb-2">
                     <label className="block text-xs font-medium mb-1">Send from Phone Number</label>
@@ -908,7 +980,10 @@ export default function AddLead() {
                   </div>
                   <div className="flex gap-4 justify-center mt-2">
                     <Button style={{background:'#25D366', color:'#fff'}} className="hover:opacity-90" variant="default" onClick={sendWhatsApp}>Send WhatsApp</Button>
-                    <Button variant="outline" onClick={sendEmail}>Send Email</Button>
+                    <Button variant="outline" onClick={sendEmail} disabled={emailLoading}>
+                      <Mail className="w-4 h-4 mr-2" />
+                      {emailLoading ? 'Sending...' : 'Send Email'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

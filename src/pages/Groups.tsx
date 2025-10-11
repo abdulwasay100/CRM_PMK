@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Users, Tag, MapPin, GraduationCap, Calendar, Paperclip, Eye, Trash2, Edit } from "lucide-react";
+import { Plus, Users, Tag, MapPin, GraduationCap, Calendar, Paperclip, Eye, Trash2, Edit, Mail } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,9 @@ export default function Groups() {
   const [messageModal, setMessageModal] = useState<{ open: boolean; group: Group | null; type: string }>({ open: false, group: null, type: '' });
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('custom');
+  const [emailLoading, setEmailLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
   const [leadsModalGroup, setLeadsModalGroup] = useState<Group | null>(null);
   const [leadsModalSearch, setLeadsModalSearch] = useState('');
@@ -247,6 +250,62 @@ export default function Groups() {
     }
   };
 
+  // Send email to group
+  const handleSendEmail = async () => {
+    if (!messageModal.group || !emailSubject.trim() || !message.trim()) {
+      toast.error('Please fill in subject and message');
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const formData = new FormData();
+      
+      // Convert attachments to base64 for API
+      const attachmentData = await Promise.all(
+        attachments.map(async (file) => ({
+          filename: file.name,
+          content: Buffer.from(await file.arrayBuffer()).toString('base64'),
+          contentType: file.type
+        }))
+      );
+
+      const emailData = {
+        type: 'bulk',
+        groupId: messageModal.group.id,
+        subject: emailSubject,
+        message: message,
+        template: selectedTemplate,
+        attachments: attachmentData
+      };
+
+      const res = await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+      });
+
+      const result = await res.json();
+      
+      if (result.success) {
+        toast.success(result.message);
+        playNotificationSound('success');
+        setMessageModal({ open: false, group: null, type: '' });
+        setEmailSubject('');
+        setMessage('');
+        setAttachments([]);
+        setSelectedTemplate('custom');
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error('Failed to send email');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -259,10 +318,10 @@ export default function Groups() {
           <Button variant="outline" onClick={handleAutoAssign} disabled={loading}>
             Auto-Create & Assign Groups
           </Button>
-          <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setShowCreate('create')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Group
-          </Button>
+        <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setShowCreate('create')}>
+          <Plus className="w-4 h-4 mr-2" />
+          Create New Group
+        </Button>
         </div>
       </div>
 
@@ -407,6 +466,7 @@ export default function Groups() {
                     WhatsApp
                   </Button>
                   <Button variant="outline" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => setMessageModal({ open: true, group: group, type: 'email' })}>
+                    <Mail className="w-4 h-4" />
                     Email
                   </Button>
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => {
@@ -587,45 +647,79 @@ export default function Groups() {
 
       {/* Message Modal */}
       {messageModal.open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-md border">
-            <h2 className="text-xl font-bold mb-4">Send {messageModal.type === 'whatsapp' ? 'WhatsApp' : 'Email'} to Group</h2>
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-card text-card-foreground p-6 rounded shadow-lg w-full max-w-lg border max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4">Send {messageModal.type === 'whatsapp' ? 'WhatsApp' : 'Email'} to Group</h2>
+            
+            {messageModal.type === 'email' && (
+              <div className="mb-4">
+                <label className="block mb-1">Email Templates</label>
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select template (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom Message</SelectItem>
+                    <SelectItem value="courseDetails">Course Details</SelectItem>
+                    <SelectItem value="fees">Fee Structure</SelectItem>
+                    <SelectItem value="schedule">Class Schedule</SelectItem>
+                    <SelectItem value="discountOffers">Discount Offers</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="mb-2">
-              <label className="block mb-1">Message</label>
-              <Textarea className="w-full h-24 mb-2" placeholder="Type your message here..." value={message} onChange={e => setMessage(e.target.value)} />
-              <label className="block mb-1">Attachment <span className="text-destructive">*</span></label>
-              <input type="file" multiple onChange={handleAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
-              {attachments.length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm">
-                  {attachments.map((file, idx) => (
-                    <li key={idx} className="flex items-center gap-2">
-                      <span>{file.name}</span>
-                      <Button size="sm" variant="outline" type="button" onClick={() => handleRemoveAttachment(idx)}>
-                        Remove
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+              {messageModal.type === 'email' && (
+              <div className="mb-2">
+                  <label className="block mb-1">Subject <span className="text-destructive">*</span></label>
+                  <Input className="w-full" placeholder="Email subject..." value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+                </div>
               )}
-            </div>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={() => {
-                setMessageModal({ open: false, group: null, type: '' });
-                setAttachments([]);
-                setMessage('');
-              }} variant="outline">Cancel</Button>
-              <Button onClick={() => {
-                if (!message.trim()) return;
-                if (attachments.length === 0) {
-                  toast.error('At least one attachment is required.');
-                  return;
+              <label className="block mb-1">Message <span className="text-destructive">*</span></label>
+              <Textarea className="w-full h-24 mb-2" placeholder="Type your message here..." value={message} onChange={e => setMessage(e.target.value)} />
+              <label className="block mb-1">Attachment {messageModal.type === 'whatsapp' && <span className="text-destructive">*</span>}</label>
+              <input type="file" multiple onChange={handleAttachmentChange} className="file:bg-background file:text-foreground file:border file:border-border file:rounded file:px-3 file:py-1 file:mr-3 file:text-sm border border-border rounded w-full p-2 bg-background text-foreground" />
+                {attachments.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {attachments.map((file, idx) => (
+                      <li key={idx} className="flex items-center gap-2">
+                        <span>{file.name}</span>
+                        <Button size="sm" variant="outline" type="button" onClick={() => handleRemoveAttachment(idx)}>
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={() => {
+                  setMessageModal({ open: false, group: null, type: '' });
+                  setAttachments([]);
+                  setMessage('');
+                setEmailSubject('');
+                setSelectedTemplate('custom');
+                }} variant="outline">Cancel</Button>
+                <Button onClick={() => {
+                if (messageModal.type === 'whatsapp') {
+                  if (!message.trim()) return;
+                  if (attachments.length === 0) {
+                    toast.error('At least one attachment is required.');
+                    return;
+                  }
+                  // WhatsApp send logic here
+                  toast.success('WhatsApp message sent successfully!');
+                  setMessageModal({ open: false, group: null, type: '' });
+                  setAttachments([]);
+                  setMessage('');
+                } else {
+                  // Email send logic
+                  handleSendEmail();
                 }
-                // Send logic here
-                toast.success('Message sent successfully!');
-                setMessageModal({ open: false, group: null, type: '' });
-                setAttachments([]);
-                setMessage('');
-              }}>Send</Button>
+              }} disabled={emailLoading}>
+                {emailLoading ? 'Sending...' : 'Send'}
+              </Button>
             </div>
           </div>
         </div>
