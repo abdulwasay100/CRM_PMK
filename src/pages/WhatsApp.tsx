@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { WhatsAppTemplate } from "@/types";
 import { toast } from "sonner";
 import { showNotification, playNotificationSound } from "@/components/ui/notification-sound";
 import React from 'react';
 
 export default function WhatsApp() {
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
   // Stats state
   const [sentCount, setSentCount] = useState(0);
   const [seenCount, setSeenCount] = useState(0);
@@ -20,27 +18,6 @@ export default function WhatsApp() {
 
   const filteredTemplates = []; // No mock data, so no filtering
 
-  const getCategoryColor = (category: WhatsAppTemplate['category']) => {
-    switch (category) {
-      case 'Course Info': return 'bg-primary-light text-primary';
-      case 'Fees': return 'bg-success-light text-success';
-      case 'Schedule': return 'bg-warning-light text-warning';
-      case 'Welcome': return 'bg-destructive-light text-destructive';
-      case 'Follow Up': return 'bg-muted text-muted-foreground';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
-
-  const getCategoryIcon = (category: WhatsAppTemplate['category']) => {
-    switch (category) {
-      case 'Course Info': return '📚';
-      case 'Fees': return '💰';
-      case 'Schedule': return '📅';
-      case 'Welcome': return '👋';
-      case 'Follow Up': return '🔄';
-      default: return '💬';
-    }
-  };
 
   // Real data
   const [groups, setGroups] = useState<any[]>([]);
@@ -58,7 +35,6 @@ export default function WhatsApp() {
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedInterest, setSelectedInterest] = useState('');
-  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [message, setMessage] = useState('');
 
   // Quick Message state
@@ -101,62 +77,12 @@ export default function WhatsApp() {
     Music: { fees: { 'One on One': 7000, Group: 4000 }, duration: '3 months', schedules: ['Sun 5-7pm', 'Wed 7-9pm'] },
   };
 
-  // Template definitions
-  const templateDefs = [
-    {
-      key: 'Course Details',
-      label: 'Course Details',
-      get: () => `Course: ${selectedCourse || '[Course]'}\nDuration: ${courseData[selectedCourse]?.duration || '[Duration]'}\nSchedule: ${courseData[selectedCourse]?.schedules[0] || '[Schedule]'}\n`,
-    },
-    {
-      key: 'Fees',
-      label: 'Fees',
-      get: () => `Fee for ${selectedCourse || '[Course]'}: Rs. ${courseData[selectedCourse]?.fees['Group'] || '[Fee]'}\n`,
-    },
-    {
-      key: 'Schedule',
-      label: 'Schedule',
-      get: () => `Schedule: ${courseData[selectedCourse]?.schedules[0] || '[Schedule]'}\n`,
-    },
-    {
-      key: 'Discount Offers',
-      label: 'Discount Offers',
-      get: () => `Special discount available! Contact us for details.\n`,
-    },
-  ];
-
-  // Auto-generate message
-  React.useEffect(() => {
-    let msg = '';
-    let addedSchedule = false;
-    selectedTemplates.forEach(t => {
-      const def = templateDefs.find(td => td.key === t);
-      if (!def) return;
-      if (t === 'Course Details' && selectedTemplates.includes('Schedule')) {
-        // Remove schedule line from Course Details if Schedule is also selected
-        let courseDetails = def.get().split('\n').filter(line => !line.toLowerCase().startsWith('schedule:')).join('\n');
-        msg += courseDetails + (courseDetails && !courseDetails.endsWith('\n') ? '\n' : '');
-      } else if (t === 'Schedule') {
-        if (!addedSchedule) {
-          msg += def.get();
-          addedSchedule = true;
-        }
-      } else {
-        msg += def.get();
-      }
-    });
-    setMessage(msg);
-  }, [selectedTemplates, selectedCourse]);
 
   // Group multi-select logic
   function toggleGroup(id: string) {
     setSelectedGroups(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
   }
 
-  // Template checkbox logic
-  function toggleTemplate(key: string) {
-    setSelectedTemplates(prev => prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]);
-  }
 
   // Fetch groups and leads
   const fetchGroups = useCallback(async () => {
@@ -427,18 +353,6 @@ export default function WhatsApp() {
                 )}
               </div>
             </div>
-            {/* Template checkboxes */}
-            <div>
-              <label className="block text-xs font-medium mb-1">Templates</label>
-              <div className="flex flex-wrap gap-3">
-                {templateDefs.map(t => (
-                  <label key={t.key} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedTemplates.includes(t.key)} onChange={() => toggleTemplate(t.key)} className="accent-primary" />
-                    {t.label}
-                  </label>
-                ))}
-              </div>
-            </div>
             {/* Email Subject */}
             <div>
               <label className="block text-xs font-medium mb-1">Email Subject</label>
@@ -564,58 +478,6 @@ export default function WhatsApp() {
         </Card>
       </div>
 
-      {/* Template Preview below */}
-      {selectedTemplate && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>{getCategoryIcon(selectedTemplate.category)}</span>
-              Template Preview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">{selectedTemplate.name}</h4>
-              <p className="text-sm text-muted-foreground mb-2">Category: {selectedTemplate.category}</p>
-            </div>
-
-            <div className="bg-muted/30 p-3 rounded-lg">
-              <p className="text-sm whitespace-pre-wrap">{selectedTemplate.content}</p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium mb-2">Variables:</p>
-              <div className="flex flex-wrap gap-1">
-                {selectedTemplate.variables.map((variable, index) => (
-                  <span key={index} className="px-2 py-1 bg-primary-light text-primary rounded text-xs">
-                    {variable}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="text-center">
-                <div className="font-medium">{selectedTemplate.sentCount}</div>
-                <div className="text-muted-foreground">Sent</div>
-              </div>
-              <div className="text-center">
-                <div className="font-medium">{selectedTemplate.seenCount}</div>
-                <div className="text-muted-foreground">Seen</div>
-              </div>
-              <div className="text-center">
-                <div className="font-medium">{selectedTemplate.replyCount}</div>
-                <div className="text-muted-foreground">Replies</div>
-              </div>
-            </div>
-
-            <Button className="w-full bg-gradient-primary hover:opacity-90">
-              <Send className="w-4 h-4 mr-2" />
-              Send Message
-            </Button>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

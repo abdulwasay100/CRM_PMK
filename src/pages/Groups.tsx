@@ -10,7 +10,7 @@ import { showNotification, playNotificationSound } from "@/components/ui/notific
 import React from "react";
 
 // Types
-type GroupType = 'Age' | 'Course' | 'City' | 'Admission Status';
+type GroupType = 'Age' | 'Course' | 'Country' | 'Admission Status';
 
 type Group = {
   id: number;
@@ -117,7 +117,7 @@ export default function Groups() {
     switch (type) {
       case 'Age': return <Calendar className="w-4 h-4 text-primary" />;
       case 'Course': return <GraduationCap className="w-4 h-4 text-success" />;
-      case 'City': return <MapPin className="w-4 h-4 text-warning" />;
+      case 'Country': return <MapPin className="w-4 h-4 text-warning" />;
       case 'Admission Status': return <Tag className="w-4 h-4 text-destructive" />;
       default: return <Users className="w-4 h-4 text-muted-foreground" />;
     }
@@ -127,7 +127,7 @@ export default function Groups() {
     switch (type) {
       case 'Age': return 'bg-primary-light text-primary';
       case 'Course': return 'bg-success-light text-success';
-      case 'City': return 'bg-warning-light text-warning';
+      case 'Country': return 'bg-warning-light text-warning';
       case 'Admission Status': return 'bg-destructive-light text-destructive';
       default: return 'bg-muted text-muted-foreground';
     }
@@ -312,9 +312,6 @@ export default function Groups() {
           <p className="text-muted-foreground">Organize leads into targeted groups for campaigns</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleAutoAssign} disabled={loading}>
-            Auto-Create & Assign Groups
-          </Button>
         <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setShowCreate('create')}>
           <Plus className="w-4 h-4 mr-2" />
           Create New Group
@@ -334,7 +331,7 @@ export default function Groups() {
                 <SelectItem value="All">All Types</SelectItem>
                 <SelectItem value="Age">Age Groups</SelectItem>
                 <SelectItem value="Course">Course Interest</SelectItem>
-                <SelectItem value="City">Location</SelectItem>
+                <SelectItem value="Country">Country</SelectItem>
                 <SelectItem value="Admission Status">Admission Status</SelectItem>
               </SelectContent>
             </Select>
@@ -372,8 +369,8 @@ export default function Groups() {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-warning">{groups.filter(g => g.group_type === 'City').length}</div>
-            <p className="text-sm text-muted-foreground">City Groups</p>
+            <div className="text-2xl font-bold text-warning">{groups.filter(g => g.group_type === 'Country').length}</div>
+            <p className="text-sm text-muted-foreground">Country Groups</p>
           </CardContent>
         </Card>
         <Card>
@@ -515,7 +512,7 @@ export default function Groups() {
                 <SelectContent>
                   <SelectItem value="Age">Age</SelectItem>
                   <SelectItem value="Course">Course</SelectItem>
-                  <SelectItem value="City">City</SelectItem>
+                  <SelectItem value="Country">Country</SelectItem>
                   <SelectItem value="Admission Status">Admission Status</SelectItem>
                 </SelectContent>
               </Select>

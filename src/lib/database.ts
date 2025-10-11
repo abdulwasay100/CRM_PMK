@@ -680,16 +680,16 @@ export async function autoCreateGroupsFromLeads() {
       }
     }
     
-    // Create City group
-    if (lead.city) {
-      const cityKey = `City:${lead.city}`;
-      if (!existingGroupKeys.has(cityKey)) {
+    // Create Country group
+    if (lead.country) {
+      const countryKey = `Country:${lead.country}`;
+      if (!existingGroupKeys.has(countryKey)) {
         newGroups.push({
-          group_type: 'City',
-          criteria: lead.city,
-          name: `${lead.city} Leads`
+          group_type: 'Country',
+          criteria: lead.country,
+          name: `${lead.country} Leads`
         });
-        existingGroupKeys.add(cityKey);
+        existingGroupKeys.add(countryKey);
       }
     }
     
@@ -757,8 +757,8 @@ export async function autoAssignLeadsToGroups() {
             matches = true;
           }
           break;
-        case 'City':
-          if (lead.city && lead.city === group.criteria) {
+        case 'Country':
+          if (lead.country && lead.country === group.criteria) {
             matches = true;
           }
           break;
