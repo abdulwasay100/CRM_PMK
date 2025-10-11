@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar";
 import { TopNavbar } from "./TopNavbar";
 import { SearchProvider } from "@/context/SearchContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface AppLayoutProps {
   children: React.ReactNode;

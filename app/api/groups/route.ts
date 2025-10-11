@@ -6,7 +6,13 @@ export async function GET(req: NextRequest) {
   try {
     await initializeDatabase();
     const groups = await getAllGroups();
-    return NextResponse.json({ groups });
+    
+    const response = NextResponse.json({ groups });
+    
+    // Add caching headers for faster loading
+    response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=59');
+    
+    return response;
   } catch (error) {
     console.error('Error fetching groups:', error);
     return NextResponse.json({ error: 'Failed to fetch groups' }, { status: 500 });

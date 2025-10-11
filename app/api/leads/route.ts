@@ -4,7 +4,13 @@ import { initializeDatabase, createLead, getLeads, convertLead, autoAssignLeadsT
 export async function GET() {
   await initializeDatabase()
   const leads = await getLeads()
-  return NextResponse.json({ leads })
+  
+  const response = NextResponse.json({ leads })
+  
+  // Add caching headers for faster loading
+  response.headers.set('Cache-Control', 'public, s-maxage=10, stale-while-revalidate=59')
+  
+  return response
 }
 
 export async function POST(req: NextRequest) {

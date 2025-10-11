@@ -5,8 +5,11 @@ import { DB_CONFIG } from '@/config/database';
 const dbConfig = {
   ...DB_CONFIG,
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 20, // Increased from 10
   queueLimit: 0,
+  acquireTimeout: 60000, // 60 seconds
+  timeout: 60000, // 60 seconds
+  reconnect: true,
 };
 
 // Create connection pool

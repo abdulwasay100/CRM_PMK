@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Plus, Users, Tag, MapPin, GraduationCap, Calendar, Paperclip, Eye, Trash2, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,32 +60,42 @@ export default function Groups() {
   const [loading, setLoading] = useState(false);
 
   // Fetch data from database
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     try {
-      const res = await fetch('/api/groups', { cache: 'no-store' });
+      const res = await fetch('/api/groups', { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       const data = await res.json();
       setGroups(data.groups || []);
     } catch (error) {
       console.error('Error fetching groups:', error);
       toast.error('Failed to fetch groups');
     }
-  };
+  }, []);
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     try {
-      const res = await fetch('/api/leads', { cache: 'no-store' });
+      const res = await fetch('/api/leads', { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       const data = await res.json();
       setLeads(data.leads || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
       toast.error('Failed to fetch leads');
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchGroups();
     fetchLeads();
-  }, []);
+  }, [fetchGroups, fetchLeads]);
 
   // Get all unique criteria for the selected type
   const criteriaOptions = React.useMemo(() => {

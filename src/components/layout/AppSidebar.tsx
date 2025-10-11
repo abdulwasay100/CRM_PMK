@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   Users,
@@ -38,11 +39,25 @@ const menuItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const pathname = usePathname();
+  const router = useRouter();
   const isCollapsed = state === "collapsed";
+  const [loadingPage, setLoadingPage] = useState<string | null>(null);
 
   const isActive = (path: string) => {
     if (path === "/dashboard") return pathname === "/dashboard" || pathname === "/";
     return pathname.startsWith(path);
+  };
+
+  const handleFastNavigation = (url: string) => {
+    if (url === pathname) return; // Already on this page
+    
+    setLoadingPage(url);
+    
+    // Use router.push for faster navigation
+    router.push(url);
+    
+    // Clear loading state after a short delay
+    setTimeout(() => setLoadingPage(null), 500);
   };
 
   return (
@@ -77,18 +92,16 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link
-                      href={item.url}
-                      className={`flex items-center px-6 py-3 text-sm font-medium transition-colors duration-200 ${
-                        isActive(item.url)
-                          ? "bg-sidebar-accent text-sidebar-primary border-r-2 border-sidebar-primary"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary"
-                      }`}
-                    >
-                      <item.icon className={`${isCollapsed ? "w-5 h-5" : "w-5 h-5 mr-3"}`} />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </Link>
+                  <SidebarMenuButton 
+                    onClick={() => handleFastNavigation(item.url)}
+                    className={`flex items-center px-6 py-3 text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                      isActive(item.url)
+                        ? "bg-sidebar-accent text-sidebar-primary border-r-2 border-sidebar-primary"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary"
+                    } ${loadingPage === item.url ? "opacity-50" : ""}`}
+                  >
+                    <item.icon className={`${isCollapsed ? "w-5 h-5" : "w-5 h-5 mr-3"} ${loadingPage === item.url ? "animate-spin" : ""}`} />
+                    {!isCollapsed && <span>{item.title}</span>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Search, Filter, UserPlus, Phone, Mail, MapPin, Eye, Edit } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,12 @@ import { matchesAllTermsInFields } from "@/lib/utils";
 import { SearchContext } from "@/context/SearchContext";
 
 async function fetchLeadsFromDB() {
-  const res = await fetch('/api/leads', { cache: 'no-store' });
+  const res = await fetch('/api/leads', { 
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache'
+    }
+  });
   const data = await res.json();
   // map DB rows to UI shape
   return (data.leads || []).map((l: any) => ({
