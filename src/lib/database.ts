@@ -149,6 +149,10 @@ export async function initializeDatabase() {
     await pool.execute(`DROP TABLE IF EXISTS messages`);
     console.log('✅ Messages table dropped');
 
+    // Reset all table data except users
+    await resetAllTableData();
+    console.log('✅ All table data reset (except users)');
+
     // Insert default admin user if not exists
     const [existingAdmin] = await pool.execute(
       'SELECT id FROM users WHERE username = ?',
@@ -339,6 +343,44 @@ export async function getLeadsByGroup(groupId: number) {
     leadIds
   );
   return rows as any[];
+}
+
+// Reset all table data except users
+export async function resetAllTableData() {
+  try {
+    // List of tables to reset (excluding users)
+    const tablesToReset = [
+      'leads',
+      'converted_leads', 
+      'reminders',
+      'lead_history',
+      'notifications',
+      'lead_groups',
+      'messages'
+    ];
+
+    // Disable foreign key checks temporarily
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 0');
+
+    // Clear each table
+    for (const table of tablesToReset) {
+      try {
+        await pool.execute(`DELETE FROM ${table}`);
+        console.log(`✅ Cleared ${table} table`);
+      } catch (error) {
+        console.log(`⚠️  Could not clear ${table} table (may not exist):`, error);
+      }
+    }
+
+    // Re-enable foreign key checks
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
+
+    console.log('✅ All table data reset completed');
+  } catch (error) {
+    console.error('❌ Error resetting table data:', error);
+    // Re-enable foreign key checks in case of error
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
+  }
 }
 
 export async function updateLead(id: number, fields: Partial<NewLead>) {

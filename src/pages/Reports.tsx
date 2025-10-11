@@ -154,52 +154,6 @@ export default function Reports() {
     return leads.filter((l: any) => l.createdAt && new Date(l.createdAt) >= start)
   }
 
-  const downloadExcel = () => {
-    const exportRows = getFilteredForExport()
-    const { start, end } = getDateRangeForPeriod()
-    const headerInfo = [
-      ['CRM PMK - Leads Report'],
-      [`Period: ${period.toUpperCase()}`],
-      [`Range: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`],
-      [`Generated At: ${new Date().toLocaleString()}`],
-      [''],
-    ]
-    const headers = [
-      'S#','Full Name','Parent Name','Course','Status','Source','City','Country','Age','Phone','Email','Created At','Notes'
-    ]
-    const rows = exportRows.map((l: any, idx: number) => [
-      idx + 1,
-      l.fullName || '',
-      l.parentName || '',
-      l.interestedCourse || '',
-      l.leadStatus || '',
-      l.inquirySource || '',
-      l.city || '',
-      l.country || '',
-      l.age ?? '',
-      l.phone || '',
-      l.email || '',
-      l.createdAt ? new Date(l.createdAt).toLocaleString() : '',
-      (l.notes || '').replace(/\n/g, ' ')
-    ])
-    const totals = {
-      leads: exportRows.length,
-      converted: exportRows.filter((l: any) => l.leadStatus === 'Converted').length,
-    }
-    const summary = [
-      [''],
-      ['Summary'],
-      ['Total Leads', totals.leads],
-      ['Converted', totals.converted],
-      ['Conversion Rate', totals.leads ? ((totals.converted / totals.leads) * 100).toFixed(1) + '%' : '0.0%'],
-    ]
-    const csv = [...headerInfo, headers, ...rows, ...summary]
-      .map(r => r.map(v => (`"${String(v ?? '').replace(/"/g,'""')}"`)).join(','))
-      .join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
-    triggerDownload(blob, `crm-report-${period}-${ts}.csv`)
-  }
 
   const downloadPDF = async () => {
     const exportRows = getFilteredForExport()
@@ -294,10 +248,6 @@ export default function Reports() {
           <Button variant="outline" onClick={downloadPDF}>
             <FileText className="w-4 h-4 mr-2" />
             Download PDF
-          </Button>
-          <Button variant="outline" onClick={downloadExcel}>
-            <Download className="w-4 h-4 mr-2" />
-            Download Excel
           </Button>
         </div>
       </div>
