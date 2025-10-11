@@ -47,7 +47,7 @@ export default function Groups() {
     criteria: '', 
     lead_ids: [] 
   });
-  const [messageModal, setMessageModal] = useState({ open: false, group: null, type: '' });
+  const [messageModal, setMessageModal] = useState<{ open: boolean; group: Group | null; type: string }>({ open: false, group: null, type: '' });
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; group: Group | null }>({ open: false, group: null });
@@ -125,7 +125,7 @@ export default function Groups() {
   // Handler for file input
   function handleAttachmentChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files) {
-      setAttachments(prev => [...prev, ...Array.from(e.target.files)]);
+      setAttachments(prev => [...prev, ...Array.from(e.target.files!)]);
     }
   }
 
@@ -388,10 +388,10 @@ export default function Groups() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button style={{background:'#25D366', color:'#fff'}} variant="default" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => setMessageModal({ open: true, group, type: 'whatsapp' })}>
+                  <Button style={{background:'#25D366', color:'#fff'}} variant="default" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => setMessageModal({ open: true, group: group, type: 'whatsapp' })}>
                     WhatsApp
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => setMessageModal({ open: true, group, type: 'email' })}>
+                  <Button variant="outline" size="sm" className="flex-1 flex items-center justify-center gap-2" onClick={() => setMessageModal({ open: true, group: group, type: 'email' })}>
                     Email
                   </Button>
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => {
