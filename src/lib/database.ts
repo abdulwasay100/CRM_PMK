@@ -145,9 +145,7 @@ export async function initializeDatabase() {
     `);
     console.log('✅ Lead groups table created');
 
-    // Drop messages table if exists
-    await pool.execute(`DROP TABLE IF EXISTS messages`);
-    console.log('✅ Messages table dropped');
+    // Messages table not needed for this CRM
 
     // Reset all table data except users
     await resetAllTableData();
@@ -355,8 +353,7 @@ export async function resetAllTableData() {
       'reminders',
       'lead_history',
       'notifications',
-      'lead_groups',
-      'messages'
+      'lead_groups'
     ];
 
     // Disable foreign key checks temporarily
