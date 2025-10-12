@@ -594,7 +594,7 @@ export async function getReminderById(id: number) {
 }
 
 // ---------------- Groups helpers ----------------
-export type GroupType = 'Age' | 'Course' | 'City' | 'Admission Status';
+export type GroupType = 'Age' | 'Course' | 'Country' | 'Admission Status';
 
 export type NewGroup = {
   name: string;
