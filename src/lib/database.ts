@@ -147,10 +147,6 @@ export async function initializeDatabase() {
 
     // Messages table not needed for this CRM
 
-    // Reset all table data except users
-    await resetAllTableData();
-    console.log('✅ All table data reset (except users)');
-
     // Insert default admin user if not exists
     const [existingAdmin] = await pool.execute(
       'SELECT id FROM users WHERE username = ?',

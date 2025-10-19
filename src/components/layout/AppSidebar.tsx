@@ -44,6 +44,7 @@ export function AppSidebar() {
   const [loadingPage, setLoadingPage] = useState<string | null>(null);
 
   const isActive = (path: string) => {
+    if (!pathname) return false;
     if (path === "/dashboard") return pathname === "/dashboard" || pathname === "/";
     return pathname.startsWith(path);
   };
