@@ -23,6 +23,7 @@ export interface EmailOptions {
     filename: string;
     content: Buffer | string;
     contentType?: string;
+    encoding?: string;
   }>;
 }
 
@@ -38,6 +39,7 @@ export interface BulkEmailOptions {
     filename: string;
     content: Buffer | string;
     contentType?: string;
+    encoding?: string;
   }>;
 }
 

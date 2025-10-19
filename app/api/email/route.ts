@@ -10,12 +10,38 @@ export async function POST(req: NextRequest) {
     const { type, to, subject, message, template, leadId, groupId, attachments, recipients } = body;
 
     if (type === 'single') {
+      // Process attachments - convert base64 strings to proper format
+      const processedAttachments = attachments ? attachments.map((attachment: any) => {
+        // Ensure proper MIME type
+        let contentType = attachment.contentType;
+        if (!contentType) {
+          const ext = attachment.filename.split('.').pop()?.toLowerCase();
+          switch (ext) {
+            case 'pdf': contentType = 'application/pdf'; break;
+            case 'doc': contentType = 'application/msword'; break;
+            case 'docx': contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; break;
+            case 'jpg': case 'jpeg': contentType = 'image/jpeg'; break;
+            case 'png': contentType = 'image/png'; break;
+            case 'gif': contentType = 'image/gif'; break;
+            case 'txt': contentType = 'text/plain'; break;
+            default: contentType = 'application/octet-stream';
+          }
+        }
+        
+        return {
+          filename: attachment.filename,
+          content: attachment.content,
+          contentType: contentType,
+          encoding: 'base64'
+        };
+      }) : undefined;
+
       // Send to single recipient
       const success = await sendEmail({
         to,
         subject,
         html: message,
-        attachments
+        attachments: processedAttachments
       });
 
       return NextResponse.json({ success, message: success ? 'Email sent successfully' : 'Failed to send email' });
@@ -59,11 +85,37 @@ export async function POST(req: NextRequest) {
         emailContent = message;
       }
 
+      // Process attachments - convert base64 strings to proper format
+      const processedAttachments = attachments ? attachments.map((attachment: any) => {
+        // Ensure proper MIME type
+        let contentType = attachment.contentType;
+        if (!contentType) {
+          const ext = attachment.filename.split('.').pop()?.toLowerCase();
+          switch (ext) {
+            case 'pdf': contentType = 'application/pdf'; break;
+            case 'doc': contentType = 'application/msword'; break;
+            case 'docx': contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'; break;
+            case 'jpg': case 'jpeg': contentType = 'image/jpeg'; break;
+            case 'png': contentType = 'image/png'; break;
+            case 'gif': contentType = 'image/gif'; break;
+            case 'txt': contentType = 'text/plain'; break;
+            default: contentType = 'application/octet-stream';
+          }
+        }
+        
+        return {
+          filename: attachment.filename,
+          content: attachment.content,
+          contentType: contentType,
+          encoding: 'base64'
+        };
+      }) : undefined;
+
       const result = await sendBulkEmails({
         recipients: emailRecipients,
         subject,
         html: emailContent,
-        attachments
+        attachments: processedAttachments
       });
 
       return NextResponse.json({
